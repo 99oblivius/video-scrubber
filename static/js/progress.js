@@ -36,7 +36,7 @@ export const setupProgressBar = (video) => {
         const timeDisplay = $('#timeDisplay');
         const frameDisplay = $('#frameDisplay');
         if (timeDisplay && frameDisplay) {
-            timeDisplay.textContent = video.currentTime.toFixed(3);
+            timeDisplay.textContent = video.currentTime.toFixed(3) + 's';
             frameDisplay.textContent = Math.floor(video.currentTime / frameTime);
         }
         updateProgress();

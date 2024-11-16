@@ -1,0 +1,36 @@
+version: '3.5'
+
+services:
+  web:
+    build: .
+    container_name: video-scrubber-flask
+    ports:
+      - "9802:8080"
+    volumes:
+      - ./static:/app/static:ro
+      - ./app.py:/app/app.py  # For development hot-reload
+    environment:
+      - WEB_CONCURRENCY=4
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://192.168.1.114:9802"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - video-scrubber-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 500M
+        reservations:
+          cpus: '0.25'
+          memory: 100M
+
+networks:
+  video-scrubber-network:
+    driver: bridge

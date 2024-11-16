@@ -162,7 +162,7 @@ const player = (() => {
         loopBtn.addEventListener('click', toggleLoop);
 
         document.addEventListener('keydown', e => {
-            if (e.repeat) return;
+            if (e.ctrlKey || e.repeat) return;
             switch(e.code) {
                 case 'Space': togglePlayPause(); break;
                 case 'ArrowLeft': jumpBackward(); break;

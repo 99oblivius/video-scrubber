@@ -29,7 +29,6 @@ const VideoPlayerSettings = (() => {
     };
 
     const setSetting = (key, value) => {
-        console.log(`${key} ${value}`);
         currentSettings[key] = value;
         saveSettings();
     };

@@ -57,6 +57,10 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
                 case 'KeyT': settings.toggleTheme(); break;
+                case 'KeyH': 
+                    tooltip.classList.toggle('active');
+                    helpBtn.classList.toggle('active');
+                    break;
                 default:
                     if (e.key >= '0' && e.key <= '9') {
                         jumpToPercent(Number(e.key) / 10);

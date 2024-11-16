@@ -220,10 +220,27 @@ const player = (() => {
         });
     };
 
+    const showInitialHelpTip = () => {
+        if (!settings.get('hasSeenHelpTip')) {
+            const helpTip = $('#helpTip');
+            helpTip.classList.add('show');
+    
+            const hideOnH = (e) => {
+                if (e.code === 'KeyH') {
+                    helpTip.classList.remove('show');
+                    settings.set('hasSeenHelpTip', true);
+                    document.removeEventListener('keydown', hideOnH);
+                }
+            };
+            document.addEventListener('keydown', hideOnH);
+        }
+    };
+
     const init = () => {
         settings.apply();
         setupEventListeners();
         requestAnimationFrame(updateTimeDisplay);
+        showInitialHelpTip();  // Add this line
     };
 
     return { togglePlayPause, stepForward, stepBackward, jumpForward, jumpBackward, init };

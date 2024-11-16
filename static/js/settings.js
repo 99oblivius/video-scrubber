@@ -4,6 +4,7 @@ const VideoPlayerSettings = (() => {
         theme: 'dark',
         loop: true,
         volume: 1.0,
+        hasSeenHelpTip: false,
         version: '1.0'
     };
 

@@ -272,15 +272,20 @@ const player = (() => {
         loopBtn.addEventListener('click', toggleLoop);
 
         document.addEventListener('keydown', e => {
-            if (e.ctrlKey || e.altKey || e.metaKey || e.repeat) return;
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
             switch(e.code) {
-                case 'Space': togglePlayPause(); break;
                 case 'ArrowLeft': jumpBackward(); break;
                 case 'ArrowRight': jumpForward(); break;
                 case 'ArrowUp': changeVolume(0.05); break;
                 case 'ArrowDown': changeVolume(-0.05); break;
                 case 'Comma': stepBackward(); break;
                 case 'Period': stepForward(); break;
+                default: break;
+            }
+
+            if (e.repeat) return;
+            switch(e.code) {
+                case 'Space': togglePlayPause(); break;
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
                 case 'KeyT': toggleTheme(); break;

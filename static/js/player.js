@@ -216,7 +216,7 @@ const player = (() => {
                 showHoverTime(e);
             }
         });
-        progressContainer.addEventListener('mouseleave', () => {
+        progressContainer.addEventListener('mouseleave', (e) => {
             if (e.buttons === 0) {
                 progressHoverTime.style.opacity = '0';
             }

@@ -48,6 +48,7 @@ body {
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    transition: background .3s;
 }
 
 .video-wrapper {
@@ -182,6 +183,8 @@ video::-webkit-media-controls { display: none !important; }
     display: grid;
     gap: 12px;
     border: 1px solid var(--border);
+    min-width: fit-content;
+    transition: background .3s;
 }
 
 .header {
@@ -190,8 +193,17 @@ video::-webkit-media-controls { display: none !important; }
     align-items: center;
 }
 
-.control-buttons { display: flex; gap: 8px; }
-.button-row { display: flex; gap: 8px; }
+.control-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.button-row {
+    display: flex;
+    flex-direction: row;
+    min-width: max-content;
+    gap: 8px;
+}
 
 button {
     padding: 10px 16px;
@@ -202,6 +214,7 @@ button {
     cursor: pointer;
     transition: background .2s;
     font-size: .9em;
+    flex-shrink: 0;
 }
 
 button:hover {

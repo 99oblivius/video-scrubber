@@ -19,4 +19,12 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+CMD ["gunicorn", \
+    "--bind", "0.0.0.0:8080", \
+    "--workers", "4", \
+    "--worker-class", "gthread", \
+    "--threads", "2", \
+    "--access-logfile", "-", \
+    "--error-logfile", "-", \
+    "--forwarded-allow-ips", "*", \
+    "app:app"]

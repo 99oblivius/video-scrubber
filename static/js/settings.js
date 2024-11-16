@@ -1,13 +1,14 @@
-const VideoPlayerSettings = (() => {
-    const STORAGE_KEY = 'videoPlayerSettings';
-    const DEFAULT_SETTINGS = {
-        theme: 'dark',
-        loop: true,
-        volume: 1.0,
-        hasSeenHelpTip: false,
-        version: '1.0'
-    };
+const STORAGE_KEY = 'videoPlayerSettings';
+const DEFAULT_SETTINGS = {
+    theme: 'dark',
+    loop: true,
+    volume: 1.0,
+    hasSeenHelpTip: false,
+    version: '1.0'
+};
 
+export const setupSettings = () => {
+    const $ = document.querySelector.bind(document);
     let currentSettings = {};
 
     const loadSettings = () => {
@@ -39,12 +40,12 @@ const VideoPlayerSettings = (() => {
     const applySettings = () => {
         // Apply theme
         document.documentElement.setAttribute('data-theme', currentSettings.theme);
-        const themeBtn = document.querySelector('#themeBtn');
+        const themeBtn = $('#themeBtn');
         if (themeBtn) themeBtn.textContent = currentSettings.theme === 'light' ? '🌙' : '☀️';
 
         // Apply loop
-        const video = document.querySelector('#video');
-        const loopBtn = document.querySelector('#loopBtn');
+        const video = $('#video');
+        const loopBtn = $('#loopBtn');
         if (video) video.loop = currentSettings.loop;
         if (loopBtn) loopBtn.classList.toggle('active', currentSettings.loop);
 
@@ -52,15 +53,26 @@ const VideoPlayerSettings = (() => {
         if (video) video.volume = currentSettings.volume;
     };
 
-    // Initialize settings on load
-    loadSettings();
+    const toggleTheme = () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        const themeBtn = $('#themeBtn');
+        themeBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
+        setSetting('theme', newTheme);
+    };
 
-    // Public API
+    const init = () => {
+        loadSettings();
+        const themeBtn = $('#themeBtn');
+        themeBtn.onclick = toggleTheme;
+    };
+
     return {
-        load: loadSettings,
-        save: saveSettings,
+        init,
         set: setSetting,
         get: getSetting,
-        apply: applySettings
+        apply: applySettings,
+        toggleTheme
     };
-})();
+};

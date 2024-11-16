@@ -56,7 +56,7 @@ export const setupMetadata = (video) => {
         const timeDisplay = $('.time-display');
         timeDisplay.innerHTML = `
             <div class="time-info">
-                Time: <span id="timeDisplay">0.000</span>s
+                Time: <span id="timeDisplay">0.000</span>
                 Frame: <span id="frameDisplay">0</span>
             </div>
             <div class="metadata-group">

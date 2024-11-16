@@ -252,20 +252,27 @@ button:hover {
 .time-display {
     font-family: ui-monospace, monospace;
     font-size: 1.1em;
-    padding: 12px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    padding-right: 12px;
+    padding-left: 12px;
     background: var(--bg);
     border-radius: 8px;
     border: 1px solid var(--border);
     display: flex;
     gap: 24px;
+    height: 46px;
     align-items: center;
     overflow-x: auto;
 }
 
 .time-info {
+    display: flex;
+    margin-right: auto;
     white-space: nowrap;
     padding-right: 24px;
     border-right: 1px solid var(--border);
+    gap: 24px;
     flex-shrink: 0;
 }
 

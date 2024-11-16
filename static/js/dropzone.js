@@ -1,4 +1,4 @@
-export const setupDropZone = (video, dropContainer) => {
+export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
     const dropError = $('#dropError');
 
@@ -12,8 +12,12 @@ export const setupDropZone = (video, dropContainer) => {
         video.src = URL.createObjectURL(file);
         video.focus();
         dropContainer.classList.remove('no-video');
-        // Trigger metadata updates
-        video.dispatchEvent(new Event('videoLoaded', { detail: file }));
+        
+        // Update metadata when video is loaded
+        video.addEventListener('loadedmetadata', () => {
+            metadata.updateMetadataDisplay(file);
+            metadata.detectFrameRate();
+        }, { once: true });
     };
 
     const init = () => {

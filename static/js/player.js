@@ -16,8 +16,8 @@ const player = (() => {
         const settings = setupSettings();
         const controls = setupControls(v, frameTime, settings);
         const progress = setupProgressBar(v);
-        const dropzone = setupDropZone(v, dc);
         const metadata = setupMetadata(v);
+        const dropzone = setupDropZone(v, dc, metadata);
         const help = setupHelpTip(settings);
 
         // Initialize all modules

@@ -1,4 +1,4 @@
-const Settings = (() => {
+const VideoPlayerSettings = (() => {
     const STORAGE_KEY = 'videoPlayerSettings';
     const DEFAULT_SETTINGS = {
         theme: 'dark',
@@ -9,7 +9,7 @@ const Settings = (() => {
 
     let currentSettings = {};
 
-    const load = () => {
+    const loadSettings = () => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
             currentSettings = stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
@@ -20,7 +20,7 @@ const Settings = (() => {
         return currentSettings;
     };
 
-    const save = () => {
+    const saveSettings = () => {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings));
         } catch (e) {
@@ -28,25 +28,39 @@ const Settings = (() => {
         }
     };
 
-    const set = (key, value) => {
+    const setSetting = (key, value) => {
+        console.log(`${key} ${value}`);
         currentSettings[key] = value;
-        save();
+        saveSettings();
     };
 
-    const get = (key) => currentSettings[key];
+    const getSetting = (key) => currentSettings[key];
 
-    const apply = () => {
+    const applySettings = () => {
         // Apply theme
         document.documentElement.setAttribute('data-theme', currentSettings.theme);
-        $('#themeBtn').textContent = currentSettings.theme === 'light' ? '🌙' : '☀️';
+        const themeBtn = document.querySelector('#themeBtn');
+        if (themeBtn) themeBtn.textContent = currentSettings.theme === 'light' ? '🌙' : '☀️';
 
         // Apply loop
-        $('#video').loop = currentSettings.loop;
-        $('#loopBtn').classList.toggle('active', currentSettings.loop);
+        const video = document.querySelector('#video');
+        const loopBtn = document.querySelector('#loopBtn');
+        if (video) video.loop = currentSettings.loop;
+        if (loopBtn) loopBtn.classList.toggle('active', currentSettings.loop);
 
         // Apply volume
-        $('#video').volume = currentSettings.volume;
+        if (video) video.volume = currentSettings.volume;
     };
 
-    return { load, save, set, get, apply };
+    // Initialize settings on load
+    loadSettings();
+
+    // Public API
+    return {
+        load: loadSettings,
+        save: saveSettings,
+        set: setSetting,
+        get: getSetting,
+        apply: applySettings
+    };
 })();

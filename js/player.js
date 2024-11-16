@@ -14,6 +14,8 @@ const player = (() => {
     const loopBtn = $('#loopBtn');
     const fpsDisplay = $('#fpsDisplay');
 
+    const settings = VideoPlayerSettings;
+
     let frameTime = 1/30, lastUpdate = 0, volumeTimeout;
 
     const updateVolumeUI = () => {
@@ -26,17 +28,14 @@ const player = (() => {
 
     const changeVolume = (delta) => {
         v.volume = Math.max(0, Math.min(1, v.volume + delta));
+        settings.set('volume', v.volume);
         updateVolumeUI();
     };
 
     const updateTimeDisplay = () => {
-        const now = performance.now();
-        if (now - lastUpdate > 100) {
-            timeDisplay.textContent = v.currentTime.toFixed(3);
-            frameDisplay.textContent = Math.floor(v.currentTime / frameTime);
-            updateProgress();
-            lastUpdate = now;
-        }
+        timeDisplay.textContent = v.currentTime.toFixed(3);
+        frameDisplay.textContent = Math.floor(v.currentTime / frameTime);
+        updateProgress();
         requestAnimationFrame(updateTimeDisplay);
     };
 
@@ -107,6 +106,7 @@ const player = (() => {
     const toggleLoop = () => {
         v.loop = !v.loop;
         loopBtn.classList.toggle('active');
+        settings.set('loop', v.loop);
     };
 
     const setupEventListeners = () => {
@@ -173,6 +173,7 @@ const player = (() => {
                 case 'Period': stepForward(); break;
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
+                case 'KeyT': toggleTheme(); break;
                 case 'KeyH': 
                     tooltip.classList.toggle('active');
                     helpBtn.classList.toggle('active');
@@ -202,29 +203,25 @@ const player = (() => {
         });
 
         const themeBtn = $('#themeBtn');
-        const setTheme = theme => {
-            document.documentElement.setAttribute('data-theme', theme);
-            themeBtn.textContent = theme === 'light' ? '🌙' : '☀️';
-            localStorage.setItem('theme', theme);
+        const toggleTheme= () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+            document.documentElement.setAttribute('data-theme', newTheme);
+            themeBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
+            settings.set('theme', newTheme);
         };
 
         themeBtn.onclick = () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            setTheme(currentTheme === 'light' ? 'dark' : 'light');
+            toggleTheme();
         };
 
         document.querySelectorAll('button, video, .progress-container').forEach(el => {
             el.addEventListener('mousedown', e => e.preventDefault());
         });
-
-        setTheme(localStorage.getItem('theme') || 'dark');
     };
 
     const init = () => {
-        v.loop = true;
-        loopBtn.classList.add('active');
-        v.volume = 1;
-        updateVolumeUI();
+        settings.apply();
         setupEventListeners();
         requestAnimationFrame(updateTimeDisplay);
     };

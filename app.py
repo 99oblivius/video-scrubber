@@ -14,14 +14,25 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
+    
+    
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "img-src 'self' data:; "
+        "img-src 'self' data: blob:; "
         "style-src 'self' 'unsafe-inline'; "
         "script-src 'self' 'unsafe-inline'; "
-        "media-src 'self' blob:; "
+        "media-src 'self' blob: *; "
         "worker-src 'self' blob:; "
     )
+    
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    
     return response
 
 # Routes

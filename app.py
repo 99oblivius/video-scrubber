@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 
 app = Flask(__name__)
 
@@ -10,9 +10,18 @@ app.config.update(
 
 @app.after_request
 def add_security_headers(response):
+    origin = request.headers.get('Origin')
+    
+    if origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
+    
     response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
     
     
@@ -23,15 +32,12 @@ def add_security_headers(response):
         "script-src 'self' 'unsafe-inline'; "
         "media-src 'self' blob: *; "
         "worker-src 'self' blob:; "
+        "connect-src 'self' blob: *; "
     )
     
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '-1'
-    
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     
     return response
 

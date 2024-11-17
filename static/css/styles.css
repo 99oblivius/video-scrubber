@@ -26,6 +26,7 @@ body {
     color: var(--text);
     transition: background .3s;
     height: 100vh;
+    height: 100dvh;
     display: flex;
     overflow: hidden;
 }
@@ -37,6 +38,7 @@ body {
     flex-direction: column;
     width: 100%;
     height: 100vh;
+    height: 100dvh;
     padding: 20px;
 }
 
@@ -335,8 +337,15 @@ button:hover {
     border: 1px solid var(--border);
 }
 
-.video-container:fullscreen { padding: 0; }
-.video-container:fullscreen video { max-height: 100vh; border-radius: 0; }
+.video-container:fullscreen {
+    padding: 0;
+}
+
+.video-container:fullscreen video {
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+}
 
 .help-tip {
     position: fixed;

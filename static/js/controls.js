@@ -90,7 +90,7 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
                 case 'KeyT': toggleTheme(); break;
-                case 'KeyH': 
+                case 'KeyH':
                     tooltip.classList.toggle('active');
                     helpBtn.classList.toggle('active');
                     break;

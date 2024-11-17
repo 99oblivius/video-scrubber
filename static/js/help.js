@@ -4,11 +4,6 @@ export const setupHelpTip = (settings) => {
     const helpBtn = $('#helpBtn');
     const helpTip = $('#helpTip');
 
-    const toggleHelp = () => {
-        tooltip.classList.toggle('active');
-        helpBtn.classList.toggle('active');
-    };
-
     const showInitialHelpTip = () => {
         if (!settings.get('hasSeenHelpTip')) {
             helpTip.classList.add('show');
@@ -22,6 +17,15 @@ export const setupHelpTip = (settings) => {
             };
             document.addEventListener('keydown', hideOnH);
         }
+    };
+
+    const toggleHelp = () => {
+        if (!settings.get('hasSeenHelpTip')) {
+            helpTip.classList.remove('show');
+            settings.set('hasSeenHelpTip', true);
+        }
+        tooltip.classList.toggle('active');
+        helpBtn.classList.toggle('active');
     };
 
     const init = () => {

@@ -310,7 +310,7 @@ button:hover {
     background: var(--surface);
     padding: 16px;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    box-shadow: 4px 5px 15px rgba(0,0,0,.15);
     min-width: 280px;
     display: none;
     z-index: 10;

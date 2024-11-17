@@ -27,6 +27,14 @@ export const setupControls = (video, frameTime, settings) => {
     const jumpBackward = () => {video.pause(); video.currentTime = Math.max(0, (video.currentTime || 0) - 1);};
     const jumpToPercent = p => { if (video.duration) video.currentTime = video.duration * p; };
 
+    const toggleTheme = () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        settings.set('theme', newTheme);
+        themeBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
+    };
+
     const toggleFullscreen = () => {
         if (document.fullscreenElement) document.exitFullscreen();
         else video.parentElement.requestFullscreen();
@@ -36,6 +44,31 @@ export const setupControls = (video, frameTime, settings) => {
         video.loop = !video.loop;
         loopBtn.classList.toggle('active');
         settings.set('loop', video.loop);
+    };
+
+    const bindButtons = () => {
+        const buttonRow = $('.button-row');
+        const [
+            jumpBackBtn,
+            prevFrameBtn,
+            playPauseBtn,
+            nextFrameBtn,
+            jumpForwardBtn
+        ] = buttonRow.children;
+
+        jumpBackBtn.onmousedown = jumpBackward;
+        prevFrameBtn.onmousedown = stepBackward;
+        playPauseBtn.onmousedown = togglePlayPause;
+        nextFrameBtn.onmousedown = stepForward;
+        jumpForwardBtn.onmousedown = jumpForward;
+
+        const updatePlayPauseText = () => {
+            playPauseBtn.textContent = video.paused ? 'Play' : 'Pause';
+        };
+        
+        video.addEventListener('play', updatePlayPauseText);
+        video.addEventListener('pause', updatePlayPauseText);
+        updatePlayPauseText();
     };
 
     const setupKeyboardShortcuts = () => {
@@ -56,7 +89,7 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'Space': togglePlayPause(); break;
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
-                case 'KeyT': settings.toggleTheme(); break;
+                case 'KeyT': toggleTheme(); break;
                 case 'KeyH': 
                     tooltip.classList.toggle('active');
                     helpBtn.classList.toggle('active');
@@ -74,8 +107,10 @@ export const setupControls = (video, frameTime, settings) => {
     const init = () => {
         video.addEventListener('click', togglePlayPause);
         loopBtn.addEventListener('click', toggleLoop);
-        themeBtn.addEventListener('click', settings.toggleTheme);
+        themeBtn.addEventListener('click', toggleTheme);
         setupKeyboardShortcuts();
+
+        bindButtons();
 
         window.addEventListener('wheel', (e) => {
             if (e.ctrlKey) return;

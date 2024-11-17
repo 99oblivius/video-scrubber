@@ -53,26 +53,14 @@ export const setupSettings = () => {
         if (video) video.volume = currentSettings.volume;
     };
 
-    const toggleTheme = () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        const themeBtn = $('#themeBtn');
-        themeBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
-        setSetting('theme', newTheme);
-    };
-
     const init = () => {
         loadSettings();
-        const themeBtn = $('#themeBtn');
-        themeBtn.onclick = toggleTheme;
     };
 
     return {
         init,
         set: setSetting,
         get: getSetting,
-        apply: applySettings,
-        toggleTheme
+        apply: applySettings
     };
 };

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Editor</title>
+    <script type="module" src="/js/player.js"></script>
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="video-container no-video" id="dropContainer">
+            <div class="video-wrapper">
+                <video id="video"></video>
+                <div class="drop-zone">
+                    <div class="drop-message">Drop video file here</div>
+                    <div class="drop-error" id="dropError"></div>
+                </div>
+                <div class="volume-indicator" id="volumeIndicator">
+                    <img src="/assets/icons/volume.svg" class="volume-icon" id="volumeIcon">
+                    <span id="volumeText" class="volume-text">100%</span>
+                </div>
+            </div>
+            <div id="progressContainer" class="progress-container">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                    <div id="progressHandle" class="progress-handle"></div>
+                </div>
+                <div id="progressHoverTime" class="progress-hover-time"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="header">
+                <div class="fps-display" id="fpsDisplay"></div>
+                <div class="control-buttons">
+                    <button class="icon-btn" id="loopBtn">
+                        <img src="/assets/icons/loop.svg" alt="Loop">
+                    </button>
+                    <button class="icon-btn" id="helpBtn">
+                        <img src="/assets/icons/help.svg" alt="Help">
+                    </button>
+                    <button class="icon-btn" id="themeBtn">☀️</button>
+                </div>
+            </div>
+
+            <div class="tooltip" id="tooltip">
+                <div class="tooltip-content">
+                    <div class="keybind-grid">
+                        <div class="key">Spc</div>
+                        <div>Play/Pause</div>
+                        <div class="key">, .</div>
+                        <div>Previous/Next Frame</div>
+                        <div class="key">← →</div>
+                        <div>Jump ±1 second</div>
+                        <div class="key">↑ ↓</div>
+                        <div>Volume ±5%</div>
+                        <div class="key">Whl</div>
+                        <div>Volume ±5%</div>
+                        <div class="key">0-9</div>
+                        <div>Jump to 0-90%</div>
+                        <div class="key">&MediumSpace;F</div>
+                        <div>Fullscreen</div>
+                        <div class="key">&MediumSpace;L</div>
+                        <div>Loop</div>
+                        <div class="key">&MediumSpace;T</div>
+                        <div>Theme</div>
+                        <div class="key">&MediumSpace;H</div>
+                        <div>Help</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button>-1s</button>
+                <button>Prev Frame</button>
+                <button class="play-button">▶</button>
+                <button>Next Frame</button>
+                <button>+1s</button>
+            </div>
+
+            <div class="time-display">
+                Time: <span id="timeDisplay">0.000s</span>
+                Frame: <span id="frameDisplay">0</span>
+            </div>
+        </div>
+    </div>
+    <div class="help-tip" id="helpTip"></div>
+</body>
+
+</html>

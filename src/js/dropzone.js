@@ -32,24 +32,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             e.stopPropagation();
             dropContainer.classList.remove('drop-active');
         });
-
-        // listen('tauri://file-drop', e => {
-        //     console.log("Dropped");
-        //     e.preventDefault();
-        //     e.stopPropagation();
-        //     dropContainer.classList.remove('drop-active');
-        //     const files = e.dataTransfer.files;
-        //     if (files.length === 0) {
-        //         showDropError('No file detected');
-        //     } else if (files.length > 1) {
-        //         showDropError('Please drop only one file');
-        //     } else if (!files[0].type.startsWith('video/')) {
-        //         showDropError('File must be a video');
-        //     } else {
-        //         loadVideo(files[0]);
-        //     }
-        // });
-
+        
         dropContainer.addEventListener('drop', e => {
             e.preventDefault();
             e.stopPropagation();

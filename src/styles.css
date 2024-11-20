@@ -3,6 +3,7 @@
   --surface: #1E1E1E;
   --text: #E0E0E0;
   --accent: #3B82F6;
+  --secondary-accent: #d98cf027;
   --hover: #2563EB;
   --border: rgba(255,255,255,.1);
   --text-filter: invert(100%) brightness(100%);
@@ -11,6 +12,7 @@
 [data-theme=light] {
   --bg: #F5F5F5;
   --surface: #FFFFFF;
+  --secondary-accent: #ce2cff3b;
   --text: #121212;
   --border: rgba(0,0,0,.1);
   --text-filter: none;
@@ -199,6 +201,7 @@ video::-webkit-media-controls { display: none !important; }
 
 .control-buttons {
   display: flex;
+  align-self: flex-end;
   gap: 8px;
 }
 
@@ -208,15 +211,38 @@ video::-webkit-media-controls { display: none !important; }
   min-width: max-content;
   gap: 8px;
   margin-bottom: 11px;
-  height: 37px;
   overflow: hidden;
 }
 
-@media (min-width: 610px) {
-  
+.editor-row {
+  display: flex;
+  flex-direction: row;
+  min-width: max-content;
+  justify-self: start;
+  margin-right: 130px;
+  gap: 8px;
+  margin-bottom: 11px;
+  overflow: hidden;
+  z-index: 1;
+  position: absolute;
+}
+
+.editor-button {
+  width: 50px;
+  overflow: hidden;
+  background: var(--secondary-accent);
+}
+
+@media (min-width: 843px) {
+  .editor-row {
+    justify-self: end;
+  }
   .button-row {
     position: absolute;
   }
+}
+
+@media (min-width: 610px) {
 }
 
 .play-button {
@@ -277,6 +303,7 @@ button:hover {
   padding-right: 12px;
   padding-left: 12px;
   background: var(--bg);
+  transition: background .3s;
   border-radius: 8px;
   border: 1px solid var(--border);
   display: flex;

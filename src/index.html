@@ -33,6 +33,12 @@
         </div>
 
         <div class="controls">
+            <div class="editor-row">
+                <button class="editor-button">✂️</button>
+                <button class="editor-button">⌗</button>
+                <button class="editor-button">🔊</button>
+                <button class="editor-button">🗜️</button>
+            </div>
             <div class="header">
                 <div class="fps-display" id="fpsDisplay"></div>
                 <div class="control-buttons">
@@ -44,6 +50,19 @@
                     </button>
                     <button class="icon-btn" id="themeBtn">☀️</button>
                 </div>
+            </div>
+
+            <div class="button-row">
+                <button>-1s</button>
+                <button>Prev Frame</button>
+                <button class="play-button">▶</button>
+                <button>Next Frame</button>
+                <button>+1s</button>
+            </div>
+            
+            <div class="time-display">
+                Time: <span id="timeDisplay">0.000s</span>
+                Frame: <span id="frameDisplay">0</span>
             </div>
 
             <div class="tooltip" id="tooltip">
@@ -71,19 +90,6 @@
                         <div>Help</div>
                     </div>
                 </div>
-            </div>
-
-            <div class="button-row">
-                <button>-1s</button>
-                <button>Prev Frame</button>
-                <button class="play-button">▶</button>
-                <button>Next Frame</button>
-                <button>+1s</button>
-            </div>
-
-            <div class="time-display">
-                Time: <span id="timeDisplay">0.000s</span>
-                Frame: <span id="frameDisplay">0</span>
             </div>
         </div>
     </div>

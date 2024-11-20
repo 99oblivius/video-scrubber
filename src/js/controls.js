@@ -81,6 +81,11 @@ export const setupControls = (video, frameTime, settings) => {
         updatePlayPauseText();
     };
 
+    const toggleTooltip = () => {
+        tooltip.classList.toggle('active');
+        helpBtn.classList.toggle('active');
+    };
+
     const setupKeyboardShortcuts = () => {
         document.addEventListener('keydown', e => {
             if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -100,10 +105,7 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'KeyF': toggleFullscreen(); break;
                 case 'KeyL': toggleLoop(); break;
                 case 'KeyT': toggleTheme(); break;
-                case 'KeyH':
-                    tooltip.classList.toggle('active');
-                    helpBtn.classList.toggle('active');
-                    break;
+                case 'KeyH': toggleTooltip(); break;
                 default:
                     if (e.key >= '0' && e.key <= '9') {
                         jumpToPercent(Number(e.key) / 10);

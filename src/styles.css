@@ -356,8 +356,8 @@ button:hover {
 
 .tooltip-content {
   position: absolute;
-  right: -20px;
-  bottom: calc(100% + 90px);
+  bottom: 80px;
+  right: -150px;
   background: var(--surface);
   padding: 16px;
   border-radius: 8px;

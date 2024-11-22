@@ -6,6 +6,7 @@ import { setupSettings } from './settings.js';
 import { setupHelpTip } from './help.js';
 
 import { setupCompress } from './compress.js';
+import { setupSave } from './save.js';
 
 const player = (() => {
     const $ = document.querySelector.bind(document);
@@ -23,6 +24,7 @@ const player = (() => {
         const help = setupHelpTip(settings);
 
         const compress = setupCompress(v);
+        const save = setupSave(v);
 
         // Initialize all modules
         settings.init();
@@ -34,6 +36,7 @@ const player = (() => {
         help.init();
 
         compress.init();
+        save.init();
 
         requestAnimationFrame(progress.updateTimeDisplay);
     };

@@ -2,15 +2,19 @@ const getCurrentWindow = window.__TAURI__.window.getCurrentWindow;
 
 export const setupControls = (video, frameTime, settings) => {
     const $ = document.querySelector.bind(document);
-    const volumeIndicator = $('#volumeIndicator');
-    const volumeText = $('#volumeText');
     const loopBtn = $('#loopBtn');
     const themeBtn = $('#themeBtn');
+    
+    const volumeIndicator = $('#volumeIndicator');
+    const volumeText = $('#volumeText');
+    const volumeIcon = $('#volumeIcon');
+    let muteVolume = false;
     let volumeTimeout;
 
     const updateVolumeUI = () => {
         const vol = Math.round(video.volume * 100);
         volumeText.textContent = `${vol}%`;
+        volumeIcon.src = muteVolume ? '/assets/icons/mute-volume.svg' : '/assets/icons/volume.svg';
         volumeIndicator.style.opacity = '1';
         clearTimeout(volumeTimeout);
         volumeTimeout = setTimeout(() => volumeIndicator.style.opacity = '0', 500);
@@ -19,6 +23,12 @@ export const setupControls = (video, frameTime, settings) => {
     const changeVolume = (delta) => {
         video.volume = Math.max(0, Math.min(1, video.volume + delta));
         settings.set('volume', video.volume);
+        updateVolumeUI();
+    };
+
+    const toggleMute = () => {
+        video.muted = !video.muted;
+        muteVolume = video.muted;
         updateVolumeUI();
     };
 
@@ -98,7 +108,7 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'Period': stepForward(); break;
                 default: break;
             }
-
+            
             if (e.repeat) return;
             switch(e.code) {
                 case 'Space': togglePlayPause(); break;
@@ -106,13 +116,19 @@ export const setupControls = (video, frameTime, settings) => {
                 case 'KeyL': toggleLoop(); break;
                 case 'KeyT': toggleTheme(); break;
                 case 'KeyH': toggleTooltip(); break;
+                case 'KeyM': toggleMute(); break;
                 default:
                     if (e.key >= '0' && e.key <= '9') {
                         jumpToPercent(Number(e.key) / 10);
                     }
                     return;
-            }
-            e.preventDefault();
+                }
+                e.preventDefault();
+            });
+            
+        document.addEventListener('dblclick', e => {
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            toggleFullscreen();
         });
     };
 

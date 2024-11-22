@@ -1,3 +1,6 @@
+const { open } = window.__TAURI__.dialog;
+const { convertFileSrc } = window.__TAURI__.core;
+
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
     const dropError = $('#dropError');
@@ -9,21 +12,33 @@ export const setupDropZone = (video, dropContainer, metadata) => {
     };
 
     const loadVideo = (file) => {
-        video.src = URL.createObjectURL(file);
+        if (typeof file === "string") {
+            video.src = convertFileSrc(file);
+        } else {
+            video.src = URL.createObjectURL(file);
+        }
+        console.log(video.src);
         video.focus();
         dropContainer.classList.remove('no-video');
 
-        // Dispatch custom event with file data
-        const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
-            detail: { file } 
-        });
-        video.dispatchEvent(videoLoadEvent);
-        
-        // Update metadata when video is loaded
-        video.addEventListener('loadedmetadata', () => {
-            metadata.updateMetadataDisplay(file);
-            metadata.detectFrameRate();
-        }, { once: true });
+        try {
+
+            // Dispatch custom event with file data
+            const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
+                detail: { file } 
+            });
+            video.dispatchEvent(videoLoadEvent);
+            
+            // Update metadata when video is loaded
+            video.addEventListener('loadedmetadata', () => {
+                metadata.updateMetadataDisplay(file);
+                metadata.detectFrameRate();
+            }, { once: true });
+        } catch (error) {
+            console.log(`Failed to load video file: ${error}`);
+            video.src = null;
+            dropContainer.classList.add('no-video');
+        }
     };
 
     const init = () => {
@@ -37,6 +52,20 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             e.preventDefault();
             e.stopPropagation();
             dropContainer.classList.remove('drop-active');
+        });
+
+        dropContainer.addEventListener('click', async e => {
+            if (video.src) return;
+            const selected = await open({
+                multiple: false,
+                filters: [{
+                    name: 'Video',
+                    extensions: ['mp4', 'webm', 'mkv', 'mov', 'avi']
+                }]
+            });
+
+            if (selected === null) return;
+            loadVideo(selected);
         });
         
         dropContainer.addEventListener('drop', e => {

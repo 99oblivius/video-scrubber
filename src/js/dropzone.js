@@ -12,6 +12,12 @@ export const setupDropZone = (video, dropContainer, metadata) => {
         video.src = URL.createObjectURL(file);
         video.focus();
         dropContainer.classList.remove('no-video');
+
+        // Dispatch custom event with file data
+        const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
+            detail: { file } 
+        });
+        video.dispatchEvent(videoLoadEvent);
         
         // Update metadata when video is loaded
         video.addEventListener('loadedmetadata', () => {

@@ -34,10 +34,33 @@
 
         <div class="controls">
             <div class="editor-row">
-                <button class="editor-button">✂️</button>
-                <button class="editor-button">⌗</button>
+                <div class="compress" id="compress">
+                    <div class="compress-content">
+                        <div class="compress-select-container">
+                            <label class="compress-label">Video Codec</label>
+                            <select class="compress-select" id="video-codec-select"></select>
+                        </div>
+                        <div class="compress-select-container">
+                            <label class="compress-label">Audio Codec</label>
+                            <select class="compress-select" id="audio-codec-select"></select>
+                        </div>
+                        <div class="compress-select-container">
+                            <label class="compress-label" for="quality-slider">Quality</label>
+                            <div class="slider-container">
+                                <input type="range" 
+                                    id="quality-slider" 
+                                    class="compress-slider" 
+                                    min="0" max="100" value="75"/>
+                                <span class="slider-value">75%</span>
+                            </div>
+                        </div>
+                        <button class="compress-save-button">Compress</button>
+                    </div>
+                </div>
+                <button class="editor-button" id="trim-button">✂️</button>
+                <button class="editor-button" id="crop-button">⌗</button>
                 <button class="editor-button">🔊</button>
-                <button class="editor-button">🗜️</button>
+                <button class="editor-button" id="compress-button">🗜️</button>
             </div>
             <div class="header">
                 <div class="fps-display" id="fpsDisplay"></div>

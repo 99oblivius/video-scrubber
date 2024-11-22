@@ -11,6 +11,9 @@
     "core:resources:default",
     "core:menu:default",
     "core:tray:default",
-    "core:window:allow-set-fullscreen"
+    "core:window:allow-set-fullscreen",
+    "dialog:default",
+    "dialog:allow-save",
+    "dialog:allow-message"
   ]
 }

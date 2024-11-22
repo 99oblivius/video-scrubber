@@ -1,4 +1,3 @@
-// help.js
 export const setupHelpTip = (settings) => {
     const $ = document.querySelector.bind(document);
     const tooltip = $('#tooltip');
@@ -16,6 +15,13 @@ export const setupHelpTip = (settings) => {
                 { keys: ['0-9'], description: 'Jump to 0-90%' },
                 { keys: ['Shft'], description: '± Frames' },
                 { keys: ['Ctrl'], description: '± Seconds' },
+            ]
+        },
+        file: {
+            title: 'File',
+            shortcuts: [
+                { keys: ['Ctrl', 'O'], description: 'Open File' },
+                { keys: ['Ctrl', 'S'], description: 'Save' },
             ]
         },
         audio: {
@@ -65,7 +71,7 @@ export const setupHelpTip = (settings) => {
             data.shortcuts.forEach(shortcut => {
                 const keyElement = document.createElement('div');
                 keyElement.className = 'key';
-                keyElement.innerHTML = shortcut.keys.map(key => `<span>${key}</span>`).join(' ');
+                keyElement.innerHTML = shortcut.keys.map(key => `<span>${key}</span>`).join('');
 
                 const descElement = document.createElement('div');
                 descElement.className = 'description';
@@ -83,7 +89,22 @@ export const setupHelpTip = (settings) => {
         return content;
     };
 
-    const showInitialHelpTip = () => {
+    const init = () => {
+        tooltip.appendChild(createTooltipContent());
+
+        helpBtn.onclick = () => {
+            tooltip.classList.toggle('active');
+            helpBtn.classList.toggle('active');
+        };
+        
+        document.addEventListener('click', e => {
+            if (!tooltip.contains(e.target) && !helpBtn.contains(e.target)) {
+                tooltip.classList.remove('active');
+                helpBtn.classList.remove('active');
+            }
+        });
+
+        // Show initial help tip if user hasn't seen it
         if (!settings.get('hasSeenHelpTip')) {
             helpTip.classList.add('show');
     
@@ -98,32 +119,8 @@ export const setupHelpTip = (settings) => {
         }
     };
 
-    const toggleHelp = () => {
-        if (!settings.get('hasSeenHelpTip')) {
-            helpTip.classList.remove('show');
-            settings.set('hasSeenHelpTip', true);
-        }
-        tooltip.classList.toggle('active');
-        helpBtn.classList.toggle('active');
-    };
-
-    const init = () => {
-        tooltip.appendChild(createTooltipContent());
-
-        helpBtn.onclick = toggleHelp;
-        
-        document.addEventListener('click', e => {
-            if (!tooltip.contains(e.target) && !helpBtn.contains(e.target)) {
-                tooltip.classList.remove('active');
-                helpBtn.classList.remove('active');
-            }
-        });
-
-        showInitialHelpTip();
-    };
-
     return {
         init,
-        toggleHelp
+        toggleHelp: () => tooltip.classList.toggle('active')
     };
 };

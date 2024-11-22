@@ -27,6 +27,16 @@ export const setupSave = (video) => {
         'auto': ['mp4', 'webm', 'mkv', 'mov', 'avi']
     };
 
+    const showContainerWarning = (compatibleContainers) => {
+        let warningEl = $('.codec-container-warning');
+        if (!warningEl) {
+            warningEl = document.createElement('div');
+            warningEl.className = 'codec-container-warning';
+            $('.compress-content').appendChild(warningEl);
+        }
+        warningEl.textContent = `Note: Compatible formats are: ${compatibleContainers.join(', ')}`;
+    };
+
     const getSourceInfo = () => {
         if (!currentFile) return null;
         
@@ -199,6 +209,8 @@ export const setupSave = (video) => {
                 compress.classList.remove('active');
                 compressBtn.classList.remove('active');
             }
+
+            return true; // Return true on successful save
         } catch (error) {
             console.error('Save failed:', error);
             
@@ -211,17 +223,8 @@ export const setupSave = (video) => {
                 await message('Save failed\nLook at the developer console for more information.', 
                     { title: 'Video Editor', kind: 'error' });
             }
+            return false; // Return false if save failed
         }
-    };
-
-    const showContainerWarning = (compatibleContainers) => {
-        let warningEl = $('.codec-container-warning');
-        if (!warningEl) {
-            warningEl = document.createElement('div');
-            warningEl.className = 'codec-container-warning';
-            $('.compress-content').appendChild(warningEl);
-        }
-        warningEl.textContent = `Note: Compatible formats are: ${compatibleContainers.join(', ')}`;
     };
 
     const updateContainerCompatibility = () => {
@@ -239,8 +242,15 @@ export const setupSave = (video) => {
 
         saveBtn.addEventListener('click', saveVideo);
         compressSaveBtn.addEventListener('click', saveVideo);
-
         compressSaveBtn.textContent = 'Save';
+
+        // Add keyboard shortcut for saving (Ctrl/Cmd + S)
+        document.addEventListener('keydown', async (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault(); // Prevent browser's save page dialog
+                await saveVideo(e);
+            }
+        });
 
         const videoCodecSelect = $('#video-codec-select');
         const audioCodecSelect = $('#audio-codec-select');

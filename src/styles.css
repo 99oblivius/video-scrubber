@@ -415,6 +415,28 @@ button:hover {
   display: block; 
 }
 
+.shortcut-categories {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-width: 405px;
+}
+
+.shortcut-category {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.category-title {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 0;
+  opacity: 0.8;
+}
+
 .keybind-grid {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -423,12 +445,24 @@ button:hover {
 }
 
 .key {
-  background: var(--bg);
-  padding: 4px 8px;
-  border-radius: 6px;
+  display: flex;
+  gap: 4px;
+}
+
+.key span {
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 4px;
   font-family: ui-monospace, monospace;
-  font-size: .9em;
+  font-size: 0.85em;
   border: 1px solid var(--border);
+  min-width: 20px;
+  text-align: center;
+}
+
+.description {
+  font-size: 0.9em;
+  opacity: 0.9;
 }
 
 /* Volume Indicator */
@@ -612,9 +646,4 @@ button:hover {
   background: var(--secondary-accent);
   font-size: 0.9em;
   color: var(--text);
-}
-
-.category-title {
-  padding-top: 10px;
-  padding-bottom: 6px;
 }

@@ -126,7 +126,7 @@ export const setupControls = (video, frameTime, settings) => {
                 e.preventDefault();
             });
             
-        document.addEventListener('dblclick', e => {
+        video.addEventListener('dblclick', e => {
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             toggleFullscreen();
         });

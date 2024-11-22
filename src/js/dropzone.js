@@ -4,6 +4,7 @@ const { convertFileSrc } = window.__TAURI__.core;
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
     const dropError = $('#dropError');
+    const videoWrapper = $('.video-wrapper');
 
     const showDropError = (message) => {
         dropError.textContent = message;
@@ -22,14 +23,11 @@ export const setupDropZone = (video, dropContainer, metadata) => {
         dropContainer.classList.remove('no-video');
 
         try {
-
-            // Dispatch custom event with file data
             const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
                 detail: { file } 
             });
             video.dispatchEvent(videoLoadEvent);
             
-            // Update metadata when video is loaded
             video.addEventListener('loadedmetadata', () => {
                 metadata.updateMetadataDisplay(file);
                 metadata.detectFrameRate();
@@ -41,7 +39,44 @@ export const setupDropZone = (video, dropContainer, metadata) => {
         }
     };
 
+    const openVideoFile = async () => {
+        const selected = await open({
+            multiple: false,
+            filters: [{
+                name: 'Video',
+                extensions: ['mp4', 'webm', 'mkv', 'mov', 'avi']
+            }]
+        });
+
+        if (selected === null) return;
+        loadVideo(selected);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropContainer.classList.remove('drop-active');
+        const files = e.dataTransfer.files;
+        if (files.length === 0) {
+            showDropError('No file detected');
+        } else if (files.length > 1) {
+            showDropError('Please drop only one file');
+        } else if (!files[0].type.startsWith('video/')) {
+            showDropError('File must be a video');
+        } else {
+            loadVideo(files[0]);
+        }
+    };
+
     const init = () => {
+        // Prevent default drag behaviors on the entire window
+        window.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        window.addEventListener('drop', handleDrop);
+
         dropContainer.addEventListener('dragover', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -54,39 +89,22 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             dropContainer.classList.remove('drop-active');
         });
 
-        dropContainer.addEventListener('click', async e => {
+        videoWrapper.addEventListener('click', async e => {
             if (video.src) return;
-            const selected = await open({
-                multiple: false,
-                filters: [{
-                    name: 'Video',
-                    extensions: ['mp4', 'webm', 'mkv', 'mov', 'avi']
-                }]
-            });
-
-            if (selected === null) return;
-            loadVideo(selected);
+            await openVideoFile();
         });
-        
-        dropContainer.addEventListener('drop', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropContainer.classList.remove('drop-active');
-            const files = e.dataTransfer.files;
-            if (files.length === 0) {
-                showDropError('No file detected');
-            } else if (files.length > 1) {
-                showDropError('Please drop only one file');
-            } else if (!files[0].type.startsWith('video/')) {
-                showDropError('File must be a video');
-            } else {
-                loadVideo(files[0]);
+
+        document.addEventListener('keydown', async (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                await openVideoFile();
             }
         });
     };
 
     return {
         init,
-        loadVideo
+        loadVideo,
+        openVideoFile
     };
 };

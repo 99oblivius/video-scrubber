@@ -101,17 +101,7 @@ fn build_ffmpeg_command(operation: &SaveOperation) -> Command {
 
         cmd.arg("-c:v").arg(video_codec);
         cmd.arg("-c:a").arg(audio_codec);
-
-        // Quality settings (using CRF for H.264/H.265, bitrate for others)
-        if video_codec == "libx264" || video_codec == "libx265" {
-            // Convert quality percentage to CRF (0-100 to 51-0, lower is better)
-            let crf = ((100 - compression.quality) as f32 * 0.51) as i32;
-            cmd.arg("-crf").arg(crf.to_string());
-        } else {
-            // For other codecs, use quality as bitrate multiplier
-            let bitrate = (compression.quality as f32 * 0.2) as i32; // Example: 100% = 20Mbps
-            cmd.arg("-b:v").arg(format!("{}M", bitrate));
-        }
+        cmd.arg("-crf").arg(compression.quality.to_string());
     }
 
     // Add crop settings if present

@@ -8,6 +8,39 @@ export const setupSave = (video) => {
     const compressSaveBtn = $('.compress-save-button');
     let currentFile = null;
 
+    const CODEC_QUALITY_PRESETS = {
+        'h264': {
+            toCodecValue: (percent) => {
+                const range = 30 - 10;
+                return Math.round(30 - (percent / 100 * range));
+            }
+        },
+        'h265': {
+            toCodecValue: (percent) => {
+                const range = 40 - 20;
+                return Math.round(40 - (percent / 100 * range));
+            }
+        },
+        'av1': {
+            toCodecValue: (percent) => {
+                const range = 50 - 15;
+                return Math.round(50 - (percent / 100 * range));
+            }
+        },
+        'vp8': {
+            toCodecValue: (percent) => {
+                const range = 63 - 4;
+                return Math.round(63 - (percent / 100 * range));
+            }
+        },
+        'vp9': {
+            toCodecValue: (percent) => {
+                const range = 63 - 0;
+                return Math.round(63 - (percent / 100 * range));
+            }
+        }
+    };
+
     const CODEC_CONTAINER_SUPPORT = {
         'h264': ['mp4', 'mkv', 'mov', 'avi'],
         'h265': ['mp4', 'mkv', 'mov'],
@@ -120,10 +153,15 @@ export const setupSave = (video) => {
             const audio_codec = $('#audio-codec-select').value;
             const quality = $('#quality-slider').value;
 
+            let codec_quality = 20;
+            if (video_codec in CODEC_QUALITY_PRESETS) {
+                codec_quality = parseInt(CODEC_QUALITY_PRESETS[video_codec].toCodecValue(quality));
+            }
+
             changes.compression = {
                 video_codec,
                 audio_codec,
-                quality: parseInt(quality),
+                quality: codec_quality,
                 container: currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase()
             };
         }

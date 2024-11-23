@@ -27,14 +27,44 @@ export const setupSave = (video) => {
         'auto': ['mp4', 'webm', 'mkv', 'mov', 'avi']
     };
 
-    const showContainerWarning = (compatibleContainers) => {
+    // Update container warning with clear message and styling
+    const showContainerWarning = (compatibleContainers, currentExt) => {
         let warningEl = $('.codec-container-warning');
         if (!warningEl) {
             warningEl = document.createElement('div');
             warningEl.className = 'codec-container-warning';
             $('.compress-content').appendChild(warningEl);
         }
-        warningEl.textContent = `Note: Compatible formats are: ${compatibleContainers.join(', ')}`;
+
+        if (compatibleContainers.length === 0) {
+            warningEl.textContent = 'No compatible formats found for selected codecs';
+            warningEl.style.backgroundColor = 'var(--secondary-accent)';
+            return compatibleContainers;
+        }
+
+        // Sort containers to put current extension first if compatible
+        const sortedContainers = compatibleContainers.sort((a, b) => {
+            if (currentExt) {
+                if (a === currentExt) return -1;
+                if (b === currentExt) return 1;
+            }
+            // Secondary sort by common preference
+            const preference = ['mp4', 'webm', 'mkv', 'mov', 'avi'];
+            return preference.indexOf(a) - preference.indexOf(b);
+        });
+
+        if (!currentExt) {
+            warningEl.textContent = `Compatible formats: ${sortedContainers.join(', ')}`;
+            warningEl.style.backgroundColor = '';
+        } else if (!compatibleContainers.includes(currentExt)) {
+            warningEl.textContent = `Current format (${currentExt}) is not compatible with selected codecs. Compatible formats: ${sortedContainers.join(', ')}`;
+            warningEl.style.backgroundColor = 'var(--secondary-accent)';
+        } else {
+            warningEl.textContent = `Compatible formats: ${sortedContainers.join(', ')}`;
+            warningEl.style.backgroundColor = '';
+        }
+
+        return sortedContainers;
     };
 
     const getSourceInfo = () => {
@@ -86,14 +116,15 @@ export const setupSave = (video) => {
 
         const compress = $('#compress');
         if (compress?.classList.contains('active')) {
-            const videoCodec = $('#video-codec-select').value;
-            const audioCodec = $('#audio-codec-select').value;
+            const video_codec = $('#video-codec-select').value;
+            const audio_codec = $('#audio-codec-select').value;
             const quality = $('#quality-slider').value;
 
             changes.compression = {
-                videoCodec,
-                audioCodec,
-                quality: parseInt(quality)
+                video_codec,
+                audio_codec,
+                quality: parseInt(quality),
+                container: currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase()
             };
         }
 
@@ -106,13 +137,14 @@ export const setupSave = (video) => {
             return [currentContainer];
         }
 
-        const { videoCodec, audioCodec } = changes.compression;
-        const videoSupported = CODEC_CONTAINER_SUPPORT[videoCodec] || [];
-        const audioSupported = AUDIO_CONTAINER_SUPPORT[audioCodec] || [];
-        
-        return videoSupported.filter(container => 
+        const { video_codec, audio_codec } = changes.compression;
+        const videoSupported = CODEC_CONTAINER_SUPPORT[video_codec] || CODEC_CONTAINER_SUPPORT['auto'];
+        const audioSupported = AUDIO_CONTAINER_SUPPORT[audio_codec] || AUDIO_CONTAINER_SUPPORT['auto'];
+
+        const compatible = videoSupported.filter(container => 
             audioSupported.includes(container)
         );
+        return compatible;
     };
 
     const validateContainer = (container, compatibleContainers) => {
@@ -126,21 +158,15 @@ export const setupSave = (video) => {
     };
 
     const prepareSaveOperation = async (outputPath, changes) => {
-        const sourceInfo = getSourceInfo();
+        const source = getSourceInfo();
         const outputContainer = outputPath.substring(outputPath.lastIndexOf('.') + 1).toLowerCase();
 
         const saveOperation = {
-            source: {
-                ...sourceInfo,
-                currentTime: video.currentTime
-            },
+            source,
+            changes,
             output: {
                 path: outputPath,
                 container: outputContainer
-            },
-            changes: {
-                ...changes,
-                timestamp: new Date().toISOString()
             }
         };
 
@@ -165,25 +191,32 @@ export const setupSave = (video) => {
 
         try {
             const changes = gatherChanges();
-
+            const currentContainer = currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase();
             const compatibleContainers = getCompatibleContainers(changes);
+
             if (compatibleContainers.length === 0) {
                 await message('No compatible containers available for the selected codecs', 
                     { title: 'Video Editor', kind: 'error' });
                 return;
             }
 
-            const currentContainer = currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase();
-            let containers = compatibleContainers;
-            if (compatibleContainers.includes(currentContainer)) {
-                containers = [currentContainer, ...compatibleContainers.filter(c => c !== currentContainer)];
-            }
+            // Sort containers to prioritize current container if compatible
+            const sortedContainers = compatibleContainers.sort((a, b) => {
+                if (a === currentContainer) return -1;
+                if (b === currentContainer) return 1;
+                return 0;
+            });
+
+            // Construct default output filename with preferred container
+            const nameWithoutExt = currentFile.name.substring(0, currentFile.name.lastIndexOf('.'));
+            const defaultContainer = sortedContainers[0];
+            const defaultPath = `${nameWithoutExt}.${defaultContainer}`;
 
             const outputPath = await save({
-                defaultPath: currentFile.name || `video.${containers[0]}`,
+                defaultPath,
                 filters: [{
                     name: changes.compression ? 'Compatible Formats' : 'Video',
-                    extensions: containers
+                    extensions: compatibleContainers
                 }]
             });
 
@@ -210,10 +243,8 @@ export const setupSave = (video) => {
                 compressBtn.classList.remove('active');
             }
 
-            return true; // Return true on successful save
+            return true;
         } catch (error) {
-            console.error('Save failed:', error);
-            
             if (error.message && error.message.includes('container format')) {
                 await message(error.message, { 
                     title: 'Invalid Container Format', 
@@ -223,21 +254,35 @@ export const setupSave = (video) => {
                 await message('Save failed\nLook at the developer console for more information.', 
                     { title: 'Video Editor', kind: 'error' });
             }
-            return false; // Return false if save failed
+            return false;
         }
     };
 
     const updateContainerCompatibility = () => {
         const changes = gatherChanges();
         if (changes.compression) {
-            const compatibleContainers = getCompatibleContainers(changes);
-            showContainerWarning(compatibleContainers);
+            if (!currentFile) {
+                // If no file is loaded yet, just show generally compatible containers
+                const { video_codec, audio_codec } = changes.compression;
+                const videoSupported = CODEC_CONTAINER_SUPPORT[video_codec] || CODEC_CONTAINER_SUPPORT['auto'];
+                const audioSupported = AUDIO_CONTAINER_SUPPORT[audio_codec] || AUDIO_CONTAINER_SUPPORT['auto'];
+                const compatibleContainers = videoSupported.filter(container => 
+                    audioSupported.includes(container)
+                );
+                showContainerWarning(compatibleContainers, null);
+            } else {
+                const currentExt = currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase();
+                const compatibleContainers = getCompatibleContainers(changes);
+                showContainerWarning(compatibleContainers, currentExt);
+            }
         }
     };
 
     const init = () => {
         video.addEventListener('videoFileLoaded', (event) => {
             currentFile = event.detail.file;
+            // Check container compatibility whenever a new video is loaded
+            updateContainerCompatibility();
         });
 
         saveBtn.addEventListener('click', saveVideo);
@@ -247,7 +292,7 @@ export const setupSave = (video) => {
         // Add keyboard shortcut for saving (Ctrl/Cmd + S)
         document.addEventListener('keydown', async (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault(); // Prevent browser's save page dialog
+                e.preventDefault();
                 await saveVideo(e);
             }
         });
@@ -258,6 +303,22 @@ export const setupSave = (video) => {
             videoCodecSelect.addEventListener('change', updateContainerCompatibility);
             audioCodecSelect.addEventListener('change', updateContainerCompatibility);
         }
+
+        // Also check compatibility if compress panel is already active when file is loaded
+        const compress = $('#compress');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    if (compress.classList.contains('active') && currentFile) {
+                        updateContainerCompatibility();
+                    }
+                }
+            });
+        });
+
+        observer.observe(compress, {
+            attributes: true
+        });
     };
 
     return {

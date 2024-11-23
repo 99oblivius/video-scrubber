@@ -17,6 +17,7 @@
     "dialog:allow-message",
     "dialog:allow-open",
     "fs:allow-read-file",
+    "fs:allow-stat",
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "**"}]

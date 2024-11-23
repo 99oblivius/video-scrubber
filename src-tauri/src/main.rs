@@ -11,8 +11,7 @@ struct SourceInfo {
     container: String,
     duration: f64,
     width: u32,
-    height: u32,
-    current_time: f64,
+    height: u32
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,8 +46,7 @@ struct CropSettings {
 struct Changes {
     compression: Option<CompressionSettings>,
     trim: Option<TrimSettings>,
-    crop: Option<CropSettings>,
-    timestamp: String,
+    crop: Option<CropSettings>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -95,7 +93,7 @@ fn build_ffmpeg_command(operation: &SaveOperation) -> Command {
     }
 
     dbg!(operation);
-
+    
     // Add video codec and quality settings if compression is present
     if let Some(compression) = &operation.changes.compression {
         let video_codec = get_video_codec_param(&compression.video_codec);
@@ -131,10 +129,8 @@ fn build_ffmpeg_command(operation: &SaveOperation) -> Command {
 
 #[tauri::command]
 async fn save_video(operation: SaveOperation) -> Result<(), String> {
-    println!("a1");
     // Build the ffmpeg command
     let mut cmd = build_ffmpeg_command(&operation);
-    println!("a2");
 
     // Execute the command
     match cmd.output() {

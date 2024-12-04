@@ -22,10 +22,14 @@
 
 /* Base Styles */
 * { 
-  box-sizing: border-box; 
-  margin: 0; 
-  padding: 0; 
-  user-select: none; 
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+*:focus {
+  outline: none !important;
 }
 
 body {
@@ -174,6 +178,7 @@ video::-webkit-media-controls {
   border-radius: 50%;
   transform: translate(-50%,-50%);
   cursor: grab;
+  z-index: 2;
 }
 
 .progress-hover-time {
@@ -646,4 +651,41 @@ button:hover {
   background: var(--secondary-accent);
   font-size: 0.9em;
   color: var(--text);
+}
+
+/* Trim Handle Styles */
+.trim-handle {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 24px;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  border-radius: 2px;
+  z-index: 2;
+}
+
+.trim-handle:hover {
+  background: var(--hover);
+}
+
+.trim-handle.left-handle {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.trim-handle.right-handle {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Trim Region Styles */
+.trim-region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 1;
 }

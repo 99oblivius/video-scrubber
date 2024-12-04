@@ -4,6 +4,7 @@ import { setupDropZone } from './dropzone.js';
 import { setupMetadata } from './metadata.js';
 import { setupSettings } from './settings.js';
 import { setupHelpTip } from './help.js';
+import { setupTrim } from './trim.js';
 
 import { setupCompress } from './compress.js';
 import { setupSave } from './save.js';
@@ -13,15 +14,14 @@ const player = (() => {
     const v = $('#video');
     const dc = $('#dropContainer');
     
-    let frameTime = 1/30;
-
     const init = () => {
         const settings = setupSettings();
-        const controls = setupControls(v, frameTime, settings);
         const progress = setupProgressBar(v);
         const metadata = setupMetadata(v);
+        const controls = setupControls(v, metadata, settings);
         const dropzone = setupDropZone(v, dc, metadata);
         const help = setupHelpTip(settings);
+        const trim = setupTrim(v, metadata);
 
         const compress = setupCompress(v);
         const save = setupSave(v);
@@ -34,6 +34,7 @@ const player = (() => {
         dropzone.init();
         metadata.init();
         help.init();
+        trim.init();
 
         compress.init();
         save.init();

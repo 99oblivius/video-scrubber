@@ -132,6 +132,7 @@ export const setupMetadata = (video) => {
 
     return {
         init,
+        frameTime,
         updateMetadataDisplay,
         detectFrameRate
     };

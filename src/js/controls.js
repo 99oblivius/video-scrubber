@@ -1,6 +1,6 @@
 const getCurrentWindow = window.__TAURI__.window.getCurrentWindow;
 
-export const setupControls = (video, frameTime, settings) => {
+export const setupControls = (video, metadata, settings) => {
     const $ = document.querySelector.bind(document);
     const loopBtn = $('#loopBtn');
     const themeBtn = $('#themeBtn');
@@ -33,8 +33,8 @@ export const setupControls = (video, frameTime, settings) => {
     };
 
     const togglePlayPause = () => video.paused ? video.play() : video.pause();
-    const stepForward = () => {video.pause(); video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + frameTime);};
-    const stepBackward = () => {video.pause(); video.currentTime = Math.max(0, (video.currentTime || 0) - frameTime);};
+    const stepForward = () => {video.pause(); video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + metadata.frameTime);};
+    const stepBackward = () => {video.pause(); video.currentTime = Math.max(0, (video.currentTime || 0) - metadata.frameTime);};
     const jumpForward = () => {video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + 1);};
     const jumpBackward = () => {video.currentTime = Math.max(0, (video.currentTime || 0) - 1);};
     const jumpToPercent = p => { if (video.duration) video.currentTime = video.duration * p; };
@@ -98,6 +98,7 @@ export const setupControls = (video, frameTime, settings) => {
 
     const setupKeyboardShortcuts = () => {
         document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') e.preventDefault();
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             switch(e.code) {
                 case 'ArrowLeft': jumpBackward(); break;

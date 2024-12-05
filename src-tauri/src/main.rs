@@ -150,7 +150,7 @@ pub struct StreamInfo {
 
     // Frame-related
     pub avg_frame_rate: String,
-    pub nb_frames: Option<i32>,
+    pub nb_frames: Option<String>,
     pub r_frame_rate: String,
 
     // Audio-specific

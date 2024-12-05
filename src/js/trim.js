@@ -8,7 +8,6 @@ export const setupTrim = (video, metadata) => {
     let trimEnd = video.duration || 0;
     let animationFrameId = null;
     
-    // Create trim handles
     const createTrimHandles = () => {
         const leftHandle = document.createElement('div');
         leftHandle.className = 'trim-handle left-handle';
@@ -33,7 +32,7 @@ export const setupTrim = (video, metadata) => {
     const progressHoverTime = $('#progressHoverTime');
     
     const updateProgressHoverTime = (time, x) => {
-        const frame = Math.floor(time / metadata.frameTime);
+        const frame = Math.floor(time / metadata.getFrameTime());
         progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
         progressHoverTime.style.left = `${x}px`;
         progressHoverTime.style.opacity = '1';
@@ -49,7 +48,6 @@ export const setupTrim = (video, metadata) => {
         trimRegion.style.left = `${leftPos}%`;
         trimRegion.style.width = `${rightPos - leftPos}%`;
         
-        // Store values in window for save.js to access
         window.trimStart = trimStart;
         window.trimEnd = trimEnd;
     };
@@ -72,12 +70,16 @@ export const setupTrim = (video, metadata) => {
                 const rect = progressBar.getBoundingClientRect();
                 const pos = (e.clientX - rect.left) / rect.width;
                 const time = video.duration * Math.max(0, Math.min(1, pos));
+
+                const frameTime = metadata.getFrameTime();
+                const frameNumber = Math.round(time / frameTime);
+                const snappedTime = frameNumber * frameTime;
                 
                 if (isLeft) {
-                    trimStart = Math.min(time, trimEnd - 0.1);
+                    trimStart = Math.min(snappedTime, trimEnd - frameTime);
                     video.currentTime = trimStart;
                 } else {
-                    trimEnd = Math.max(time, trimStart + 0.1);
+                    trimEnd = Math.max(snappedTime, trimStart + frameTime);
                     video.currentTime = trimEnd;
                 }
                 
@@ -107,15 +109,11 @@ export const setupTrim = (video, metadata) => {
         trimRegion.style.display = isActive ? 'block' : 'none';
         
         if (isActive) {
-            // Only reset positions if no previous trim exists
             if (window.trimStart === undefined || window.trimEnd === undefined) {
                 trimStart = 0;
                 trimEnd = video.duration || 0;
             }
             updateTrimRegion();
-        } else {
-            // Don't reset the values, just hide the UI
-            // but keep window.trimStart/End for save.js
         }
     };
     
@@ -131,10 +129,9 @@ export const setupTrim = (video, metadata) => {
         isUserSeeking = false;
     };
 
-    // Handle trim region looping using requestAnimationFrame
     const checkTimeAndLoop = () => {
         if (!isUserSeeking && trimBtn.classList.contains('active') && video.loop && !video.paused) {
-            if (video.currentTime >= trimEnd || video.currentTime + metadata.frameTime < trimStart) {
+            if (video.currentTime >= trimEnd || video.currentTime + metadata.getFrameTime() < trimStart) {
                 video.currentTime = trimStart;
                 if (wasPlaying) video.play();
             }
@@ -156,12 +153,9 @@ export const setupTrim = (video, metadata) => {
         }
     };
     
-    // Handle keyboard shortcuts for trim points
     const handleTrimKeyboard = (e) => {
-        // Only process if trim mode is active
         if (!trimBtn.classList.contains('active')) return;
         
-        // Use character rather than keyCode for better keyboard layout support
         const char = e.key;
         if (char === '[') {
             trimStart = video.currentTime;
@@ -178,31 +172,25 @@ export const setupTrim = (video, metadata) => {
         
         trimBtn.addEventListener('click', toggleTrimMode);
         
-        // Start animation frame loop when video starts playing
         video.addEventListener('play', startTimeChecking);
         video.addEventListener('pause', stopTimeChecking);
         
-        // Handle seeking states
         progressContainer.addEventListener('mousedown', handleSeekStart);
         document.addEventListener('mouseup', handleSeekEnd);
         
-        // Handle keyboard shortcuts
         document.addEventListener('keypress', handleTrimKeyboard);
         
-        // Reset trim positions when a new video is loaded
         video.addEventListener('loadedmetadata', () => {
             trimStart = 0;
             trimEnd = video.duration || 0;
             window.trimStart = undefined;
             window.trimEnd = undefined;
             
-            // If trim mode is active, update the UI
             if (trimBtn.classList.contains('active')) {
                 updateTrimRegion();
             }
         });
 
-        // Clean up on page unload
         window.addEventListener('unload', () => {
             stopTimeChecking();
             document.removeEventListener('keypress', handleTrimKeyboard);

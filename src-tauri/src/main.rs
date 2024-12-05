@@ -136,12 +136,47 @@ async fn save_video(operation: SaveOperation) -> Result<(), String> {
     }
 }
 
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StreamInfo {
+    pub codec_type: String,
+    pub r_frame_rate: String,
+    pub avg_frame_rate: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FFprobeOutput {
+    pub streams: Vec<StreamInfo>,
+}
+
+#[tauri::command]
+async fn get_video_info(path: String) -> Result<FFprobeOutput, String> {
+    let output = Command::new("ffprobe")
+        .args([
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams",
+            &path
+        ])
+        .output()
+        .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&output_str)
+        .map_err(|e| format!("Failed to parse ffprobe output: {}", e))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![save_video])
+        .invoke_handler(tauri::generate_handler![save_video, get_video_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

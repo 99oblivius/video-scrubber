@@ -33,8 +33,14 @@ export const setupControls = (video, metadata, settings) => {
     };
 
     const togglePlayPause = () => video.paused ? video.play() : video.pause();
-    const stepForward = () => {video.pause(); video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + metadata.frameTime);};
-    const stepBackward = () => {video.pause(); video.currentTime = Math.max(0, (video.currentTime || 0) - metadata.frameTime);};
+    const stepForward = () => {
+        video.pause();
+        video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + metadata.getFrameTime());
+    };
+    const stepBackward = () => {
+        video.pause();
+        video.currentTime = Math.max(0, (video.currentTime || 0) - metadata.getFrameTime());
+    };
     const jumpForward = () => {video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + 1);};
     const jumpBackward = () => {video.currentTime = Math.max(0, (video.currentTime || 0) - 1);};
     const jumpToPercent = p => { if (video.duration) video.currentTime = video.duration * p; };

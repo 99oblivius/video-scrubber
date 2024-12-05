@@ -1,10 +1,9 @@
-export const setupProgressBar = (video) => {
+export const setupProgressBar = (video, metadata) => {
     const $ = document.querySelector.bind(document);
     const progressFill = $('#progressFill');
     const progressHandle = $('#progressHandle');
     const progressContainer = $('#progressContainer');
     const progressHoverTime = $('#progressHoverTime');
-    let frameTime = 1/30;
 
     const updateProgress = () => {
         if (video.duration) {
@@ -26,7 +25,8 @@ export const setupProgressBar = (video) => {
         const rect = progressContainer.getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
         const time = video.duration * Math.max(0, Math.min(1, pos));
-        progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${Math.floor(time/frameTime)})`;
+        const frame = Math.floor(time / metadata.getFrameTime());
+        progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
         progressHoverTime.style.left = `${e.clientX}px`;
         progressHoverTime.style.top = `${rect.y - 35}px`;
         progressHoverTime.style.opacity = '1';
@@ -37,7 +37,7 @@ export const setupProgressBar = (video) => {
         const frameDisplay = $('#frameDisplay');
         if (timeDisplay && frameDisplay) {
             timeDisplay.textContent = video.currentTime.toFixed(3) + 's';
-            frameDisplay.textContent = Math.floor(video.currentTime / frameTime);
+            frameDisplay.textContent = Math.floor(video.currentTime / metadata.getFrameTime());
         }
         updateProgress();
         requestAnimationFrame(updateTimeDisplay);

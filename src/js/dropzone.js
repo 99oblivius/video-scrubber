@@ -41,9 +41,8 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             });
             video.dispatchEvent(videoLoadEvent);
             
-            video.addEventListener('loadedmetadata', () => {
-                metadata.updateMetadataDisplay(fileObject);
-                metadata.detectFrameRate();
+            video.addEventListener('loadedmetadata', async () => {
+                await metadata.updateMetadataDisplay(fileObject);
             }, { once: true });
         } catch (error) {
             console.error('Failed to load video file:', error);

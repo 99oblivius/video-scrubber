@@ -1,7 +1,15 @@
+const { invoke } = window.__TAURI__.core;
+
 export const setupMetadata = (video) => {
     const $ = document.querySelector.bind(document);
-    const fpsDisplay = $('#fpsDisplay');
     let frameTime = 1/30;
+    let detectedFPS = null;
+
+    const parseFrameRate = (rateStr) => {
+        console.log(rateStr);
+        const [num, den] = rateStr.split('/').map(Number);
+        return num / (den || 1);
+    };
 
     const formatFileSize = (bytes) => {
         if (bytes === 0) return '0 B';
@@ -50,8 +58,40 @@ export const setupMetadata = (video) => {
         return '?';
     };
 
-    const updateMetadataDisplay = (file) => {
+    const detectFrameRate = async (videoPath) => {
+        try {
+            console.log(videoPath);
+            const probeData = await invoke('get_video_info', { path: videoPath });
+            
+            const videoStream = probeData.streams.find(stream => 
+                stream.codec_type.toLowerCase() === 'video'
+            );
+
+            if (!videoStream) throw new Error('No video stream found');
+            const fps = parseFrameRate(videoStream.avg_frame_rate || videoStream.r_frame_rate);
+            
+            if (fps > 0) {
+                detectedFPS = fps;
+                frameTime = 1 / fps;
+                return fps;
+            }
+            throw new Error('Invalid frame rate detected');
+        } catch (error) {
+            console.warn('Failed to detect framerate:', error);
+            // Fall back to default values
+            detectedFPS = 30;
+            frameTime = 1/30;
+            return 30;
+        }
+    };
+
+    const getFrameTime = () => frameTime;
+    const getFPS = () => detectedFPS;
+
+    const updateMetadataDisplay = async (file) => {
         if (!video.src) return;
+
+        await detectFrameRate(file.path);
         
         const timeDisplay = $('.time-display');
         timeDisplay.innerHTML = `
@@ -80,22 +120,12 @@ export const setupMetadata = (video) => {
                     <span class="metadata-label">🔊</span>
                     <span id="audioCodecDisplay">${getAudioCodec(file)}</span>
                 </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">🎯</span>
+                    <span id="fpsDisplay">${1 * detectedFPS?.toFixed(3) || '30'} FPS</span>
+                </div>
             </div>
         `;
-    };
-
-    const detectFrameRate = () => {
-        video.addEventListener('loadedmetadata', () => {
-            if (video.getVideoPlaybackQuality) {
-                const q = video.getVideoPlaybackQuality();
-                if (q.totalVideoFrames > 0) {
-                    frameTime = video.duration / q.totalVideoFrames;
-                    fpsDisplay.textContent = `${(1/frameTime).toFixed(3)} FPS`;
-                    return;
-                }
-            }
-            fpsDisplay.textContent = '';
-        }, {once: true});
     };
 
     const setupClickDrag = () => {
@@ -132,8 +162,9 @@ export const setupMetadata = (video) => {
 
     return {
         init,
-        frameTime,
+        getFrameTime,
+        getFPS,
+        detectFrameRate,
         updateMetadataDisplay,
-        detectFrameRate
     };
 };

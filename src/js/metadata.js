@@ -63,15 +63,17 @@ export const setupMetadata = (video) => {
     const getVideoCodec = () => {
         const videoStream = getVideoStream();
         if (!videoStream) return '?';
-        return videoStream.codec_name || 'Unknown';
+        let codecName = videoStream.codec_name;
+        return codecName;
     };
     
     const getAudioCodec = () => {
-        if (!probeData) return '?';
+        if (!probeData) return null;
         const audioStreams = getAudioStreams();
-        if (!audioStreams.length) return '?';
+        if (audioStreams.length === 0) return null;
+        
         const primaryStream = audioStreams[0];
-        const codecName = primaryStream.codec_name || 'Unknown';
+        let codecName = primaryStream.codec_name;
         return audioStreams.length > 1 ? `${codecName}(${audioStreams.length})` : codecName;
     };
 
@@ -110,7 +112,9 @@ export const setupMetadata = (video) => {
             const audioCodec = getAudioCodec();
             
             const timeDisplay = $('.time-display');
-            timeDisplay.innerHTML = `
+            
+            // Start building metadata items
+            const metadataItems = [`
                 <div class="time-info">
                     Time: <span id="timeDisplay">0.000</span>
                     Frame: <span id="frameDisplay">0</span>
@@ -135,13 +139,22 @@ export const setupMetadata = (video) => {
                     <div class="metadata-item">
                         <span class="metadata-label">🎬</span>
                         <span id="videoCodecDisplay">${videoCodec}</span>
-                    </div>
+                    </div>`];
+
+            // Only add audio codec if it exists
+            if (audioCodec !== null) {
+                metadataItems.push(`
                     <div class="metadata-item">
                         <span class="metadata-label">🔊</span>
                         <span id="audioCodecDisplay">${audioCodec}</span>
-                    </div>
-                </div>
-            `;
+                    </div>`);
+            }
+
+            // Close the metadata group
+            metadataItems.push(`</div>`);
+            
+            // Set the HTML content
+            timeDisplay.innerHTML = metadataItems.join('');
         } catch (error) {
             console.error('Failed to update metadata display:', error);
         }

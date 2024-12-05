@@ -4,6 +4,7 @@ export const setupProgressBar = (video, metadata) => {
     const progressHandle = $('#progressHandle');
     const progressContainer = $('#progressContainer');
     const progressHoverTime = $('#progressHoverTime');
+    let updateInterval = null;
 
     const updateProgress = () => {
         if (video.duration) {
@@ -12,14 +13,43 @@ export const setupProgressBar = (video, metadata) => {
             progressHandle.style.left = `${progress}%`;
         }
     };
-
+    
+    const updateTimeDisplay = () => {
+        const timeDisplay = $('#timeDisplay');
+        const frameDisplay = $('#frameDisplay');
+        
+        if (timeDisplay && frameDisplay) {
+            const frameTime = metadata.getFrameTime();
+            const frameNumber = Math.round(video.currentTime / frameTime);
+            const frameAlignedTime = frameNumber * frameTime;
+            
+            timeDisplay.textContent = frameAlignedTime.toFixed(3) + 's';
+            frameDisplay.textContent = frameNumber;
+        }
+        updateProgress();
+    };
+    
+    const startUpdates = () => {
+        if (updateInterval) return;
+        const fps = metadata.getFPS() || 30;
+        const intervalTime = 1000 / fps;
+        updateInterval = setInterval(updateTimeDisplay, intervalTime);
+    };
+    
+    const stopUpdates = () => {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+            updateInterval = null;
+        }
+    };
+    
     const setProgress = (e) => {
         if (!video.duration) return;
         const rect = progressContainer.getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
         video.currentTime = video.duration * Math.max(0, Math.min(1, pos));
     };
-
+    
     const showHoverTime = (e) => {
         if (!video.duration) return;
         const rect = progressContainer.getBoundingClientRect();
@@ -32,24 +62,13 @@ export const setupProgressBar = (video, metadata) => {
         progressHoverTime.style.opacity = '1';
     };
 
-    const updateTimeDisplay = () => {
-        const timeDisplay = $('#timeDisplay');
-        const frameDisplay = $('#frameDisplay');
-        if (timeDisplay && frameDisplay) {
-            timeDisplay.textContent = video.currentTime.toFixed(3) + 's';
-            frameDisplay.textContent = Math.floor(video.currentTime / metadata.getFrameTime());
-        }
-        updateProgress();
-        requestAnimationFrame(updateTimeDisplay);
-    };
-
     const init = () => {
         progressContainer.addEventListener('mousemove', (e) => {
             if (e.buttons === 0) {
                 showHoverTime(e);
             }
         });
-
+        
         progressContainer.addEventListener('mouseleave', (e) => {
             if (e.buttons === 0) {
                 progressHoverTime.style.opacity = '0';
@@ -75,6 +94,15 @@ export const setupProgressBar = (video, metadata) => {
             document.addEventListener('mousemove', handleDrag);
             document.addEventListener('mouseup', handleDragEnd);
         });
+
+        video.addEventListener('play', startUpdates);
+        video.addEventListener('pause', stopUpdates);
+        video.addEventListener('seeking', updateTimeDisplay);
+        video.addEventListener('seeked', updateTimeDisplay);
+        
+        window.addEventListener('unload', stopUpdates);
+
+        updateTimeDisplay();
     };
 
     return {

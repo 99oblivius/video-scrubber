@@ -31,6 +31,8 @@ export const setupDropZone = (video, dropContainer, metadata) => {
 
     const loadVideo = async (path) => {
         try {
+            const wasPlaying = !video.paused;
+            
             const fileObject = await createFileObject(path);
             video.src = convertFileSrc(fileObject.path);
             video.focus();
@@ -43,6 +45,13 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             
             video.addEventListener('loadedmetadata', async () => {
                 await metadata.updateMetadataDisplay(fileObject);
+                if (wasPlaying) {
+                    try {
+                        await video.play();
+                    } catch (playError) {
+                        console.warn('Auto-play failed:', playError);
+                    }
+                }
             }, { once: true });
         } catch (error) {
             console.error('Failed to load video file:', error);

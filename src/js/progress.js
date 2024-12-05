@@ -13,7 +13,7 @@ export const setupProgressBar = (video, metadata) => {
             progressHandle.style.left = `${progress}%`;
         }
     };
-    
+
     const updateTimeDisplay = () => {
         const timeDisplay = $('#timeDisplay');
         const frameDisplay = $('#frameDisplay');
@@ -28,38 +28,47 @@ export const setupProgressBar = (video, metadata) => {
         }
         updateProgress();
     };
-    
+
     const startUpdates = () => {
-        if (updateInterval) return;
+        stopUpdates();
         const fps = metadata.getFPS() || 30;
         const intervalTime = 1000 / fps;
         updateInterval = setInterval(updateTimeDisplay, intervalTime);
     };
-    
+
     const stopUpdates = () => {
         if (updateInterval) {
             clearInterval(updateInterval);
             updateInterval = null;
         }
     };
-    
+
     const setProgress = (e) => {
         if (!video.duration) return;
         const rect = progressContainer.getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
         video.currentTime = video.duration * Math.max(0, Math.min(1, pos));
     };
-    
+
     const showHoverTime = (e) => {
         if (!video.duration) return;
         const rect = progressContainer.getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
         const time = video.duration * Math.max(0, Math.min(1, pos));
         const frame = Math.floor(time / metadata.getFrameTime());
+
         progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
-        progressHoverTime.style.left = `${e.clientX}px`;
-        progressHoverTime.style.top = `${rect.y - 35}px`;
         progressHoverTime.style.opacity = '1';
+
+        const tooltipWidth = progressHoverTime.offsetWidth;
+        
+        let x = e.clientX;
+        const minX = tooltipWidth / 2;
+        const maxX = window.innerWidth - tooltipWidth / 2;
+        x = Math.max(minX, Math.min(maxX, x));
+        
+        progressHoverTime.style.left = `${x}px`;
+        progressHoverTime.style.top = `${rect.y - 35}px`;
     };
 
     const init = () => {
@@ -68,7 +77,7 @@ export const setupProgressBar = (video, metadata) => {
                 showHoverTime(e);
             }
         });
-        
+
         progressContainer.addEventListener('mouseleave', (e) => {
             if (e.buttons === 0) {
                 progressHoverTime.style.opacity = '0';
@@ -100,14 +109,30 @@ export const setupProgressBar = (video, metadata) => {
         video.addEventListener('seeking', updateTimeDisplay);
         video.addEventListener('seeked', updateTimeDisplay);
         
-        window.addEventListener('unload', stopUpdates);
+        video.addEventListener('loadedmetadata', () => {
+            updateTimeDisplay();
+            if (!video.paused) {
+                startUpdates();
+            }
+        });
 
+        video.addEventListener('videoFileLoaded', () => {
+            stopUpdates();
+            updateTimeDisplay();
+            if (!video.paused) {
+                startUpdates();
+            }
+        });
+        
+        window.addEventListener('unload', stopUpdates);
         updateTimeDisplay();
     };
 
     return {
         init,
         updateTimeDisplay,
-        updateProgress
+        updateProgress,
+        startUpdates,
+        stopUpdates
     };
 };

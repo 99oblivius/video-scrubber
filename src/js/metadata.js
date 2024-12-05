@@ -4,9 +4,10 @@ export const setupMetadata = (video) => {
     const $ = document.querySelector.bind(document);
     let frameTime = 1/30;
     let detectedFPS = null;
+    let probeData = null;
 
     const parseFrameRate = (rateStr) => {
-        console.log(rateStr);
+        if (!rateStr) return null;
         const [num, den] = rateStr.split('/').map(Number);
         return num / (den || 1);
     };
@@ -31,58 +32,68 @@ export const setupMetadata = (video) => {
         return `${m}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     };
 
-    const getVideoCodec = (videoFile) => {
-        const fileName = videoFile.name.toLowerCase();
-        if (fileName.includes('h264') || fileName.includes('avc')) return 'H.264';
-        if (fileName.includes('h265') || fileName.includes('hevc')) return 'H.265';
-        if (fileName.includes('av1')) return 'AV1';
-        if (fileName.includes('vp8')) return 'VP8';
-        if (fileName.includes('vp9')) return 'VP9';
+    const getVideoStream = () => {
+        if (!probeData) return null;
+        return probeData.streams.find(stream => 
+            stream.codec_type.toLowerCase() === 'video'
+        );
+    };
+
+    const getAudioStreams = () => {
+        if (!probeData) return [];
+        return probeData.streams.filter(stream => 
+            stream.codec_type.toLowerCase() === 'audio'
+        );
+    };
+
+    const fetchProbeData = async (videoPath) => {
+        if (probeData) return probeData;
         
-        const type = videoFile.type;
-        if (type.includes('mp4') || type.includes('h264')) return 'H.264';
-        if (type.includes('webm')) return 'VP8/VP9';
-        return '?';
+        try {
+            probeData = await invoke('get_video_info', { path: videoPath });
+            console.log(probeData);
+            return probeData;
+        } catch (error) {
+            console.error('Failed to fetch probe data:', error);
+            probeData = null;
+            throw error;
+        }
+    };
+
+    const getVideoCodec = () => {
+        const videoStream = getVideoStream();
+        if (!videoStream) return '?';
+        let codecName = videoStream.codec_name;
+        return codecName;
     };
     
-    const getAudioCodec = (videoFile) => {
-        const fileName = videoFile.name.toLowerCase();
-        if (fileName.includes('aac')) return 'AAC';
-        if (fileName.includes('mp3')) return 'MP3';
-        if (fileName.includes('opus')) return 'Opus';
-        if (fileName.includes('vorbis')) return 'Vorbis';
-        
-        const type = videoFile.type;
-        if (type.includes('mp4')) return 'AAC';
-        if (type.includes('webm')) return 'Vorbis';
-        return '?';
+    const getAudioCodec = () => {
+        if (!probeData) return '?';
+        const audioStreams = getAudioStreams();
+        const primaryStream = audioStreams[0];
+        let codecName = primaryStream.codec_name;
+        return audioStreams.length > 1 ? `${codecName}(${audioStreams.length})` : codecName;
     };
 
-    const detectFrameRate = async (videoPath) => {
-        try {
-            console.log(videoPath);
-            const probeData = await invoke('get_video_info', { path: videoPath });
-            
-            const videoStream = probeData.streams.find(stream => 
-                stream.codec_type.toLowerCase() === 'video'
-            );
-
-            if (!videoStream) throw new Error('No video stream found');
-            const fps = parseFrameRate(videoStream.avg_frame_rate || videoStream.r_frame_rate);
-            
-            if (fps > 0) {
-                detectedFPS = fps;
-                frameTime = 1 / fps;
-                return fps;
-            }
-            throw new Error('Invalid frame rate detected');
-        } catch (error) {
-            console.warn('Failed to detect framerate:', error);
-            // Fall back to default values
-            detectedFPS = 30;
-            frameTime = 1/30;
+    const detectFrameRate = () => {
+        const videoStream = getVideoStream();
+        if (!videoStream) {
+            console.warn('No video stream found for frame rate detection');
             return 30;
         }
+
+        const fps = parseFrameRate(videoStream.avg_frame_rate || videoStream.r_frame_rate);
+        
+        if (fps > 0) {
+            detectedFPS = fps;
+            frameTime = 1 / fps;
+            return fps;
+        }
+
+        console.warn('Invalid frame rate detected, using default');
+        detectedFPS = 30;
+        frameTime = 1/30;
+        return 30;
     };
 
     const getFrameTime = () => frameTime;
@@ -91,41 +102,49 @@ export const setupMetadata = (video) => {
     const updateMetadataDisplay = async (file) => {
         if (!video.src) return;
 
-        await detectFrameRate(file.path);
-        
-        const timeDisplay = $('.time-display');
-        timeDisplay.innerHTML = `
-            <div class="time-info">
-                Time: <span id="timeDisplay">0.000</span>
-                Frame: <span id="frameDisplay">0</span>
-            </div>
-            <div class="metadata-group">
-                <div class="metadata-item">
-                    <span class="metadata-label">⏱</span>
-                    <span id="durationDisplay">${formatDuration(video.duration)}</span>
+        try {
+            await fetchProbeData(file.path);
+            
+            const fps = detectFrameRate();
+            const videoCodec = getVideoCodec();
+            const audioCodec = getAudioCodec();
+            
+            const timeDisplay = $('.time-display');
+            timeDisplay.innerHTML = `
+                <div class="time-info">
+                    Time: <span id="timeDisplay">0.000</span>
+                    Frame: <span id="frameDisplay">0</span>
                 </div>
-                <div class="metadata-item">
-                    <span class="metadata-label">📐</span>
-                    <span id="resolutionDisplay">${video.videoWidth}×${video.videoHeight}</span>
+                <div class="metadata-group">
+                    <div class="metadata-item">
+                        <span class="metadata-label">⏱</span>
+                        <span id="durationDisplay">${formatDuration(video.duration)}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">📐</span>
+                        <span id="resolutionDisplay">${video.videoWidth}×${video.videoHeight}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">💾</span>
+                        <span id="sizeDisplay">${formatFileSize(file.size)}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">🎯</span>
+                        <span id="fpsDisplay">${1*fps.toFixed(3)} FPS</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">🎬</span>
+                        <span id="videoCodecDisplay">${videoCodec}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">🔊</span>
+                        <span id="audioCodecDisplay">${audioCodec}</span>
+                    </div>
                 </div>
-                <div class="metadata-item">
-                    <span class="metadata-label">💾</span>
-                    <span id="sizeDisplay">${formatFileSize(file.size)}</span>
-                </div>
-                <div class="metadata-item">
-                    <span class="metadata-label">🎬</span>
-                    <span id="videoCodecDisplay">${getVideoCodec(file)}</span>
-                </div>
-                <div class="metadata-item">
-                    <span class="metadata-label">🔊</span>
-                    <span id="audioCodecDisplay">${getAudioCodec(file)}</span>
-                </div>
-                <div class="metadata-item">
-                    <span class="metadata-label">🎯</span>
-                    <span id="fpsDisplay">${1 * detectedFPS?.toFixed(3) || '30'} FPS</span>
-                </div>
-            </div>
-        `;
+            `;
+        } catch (error) {
+            console.error('Failed to update metadata display:', error);
+        }
     };
 
     const setupClickDrag = () => {
@@ -155,6 +174,13 @@ export const setupMetadata = (video) => {
             slider.scrollLeft = scrollLeft - walk * 0.667;
         });
     };
+
+    // Clear probe data when a new video is loaded
+    video.addEventListener('loadstart', () => {
+        probeData = null;
+        detectedFPS = null;
+        frameTime = 1/30;
+    });
 
     const init = () => {
         setupClickDrag();

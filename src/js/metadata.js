@@ -63,15 +63,15 @@ export const setupMetadata = (video) => {
     const getVideoCodec = () => {
         const videoStream = getVideoStream();
         if (!videoStream) return '?';
-        let codecName = videoStream.codec_name;
-        return codecName;
+        return videoStream.codec_name || 'Unknown';
     };
     
     const getAudioCodec = () => {
         if (!probeData) return '?';
         const audioStreams = getAudioStreams();
+        if (!audioStreams.length) return '?';
         const primaryStream = audioStreams[0];
-        let codecName = primaryStream.codec_name;
+        const codecName = primaryStream.codec_name || 'Unknown';
         return audioStreams.length > 1 ? `${codecName}(${audioStreams.length})` : codecName;
     };
 

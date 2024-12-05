@@ -141,7 +141,8 @@ async fn save_video(operation: SaveOperation) -> Result<(), String> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StreamInfo {
     pub codec_type: String,
-    pub codec_name: String,
+    #[serde(default)]
+    pub codec_name: Option<String>,
     pub codec_long_name: Option<String>,
     pub profile: Option<String>,
     pub bit_rate: Option<String>,
@@ -167,14 +168,15 @@ async fn get_video_info(path: String) -> Result<FFprobeOutput, String> {
         ])
         .output()
         .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
-
+    
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).into_owned());
     }
-
+    
     let output_str = String::from_utf8_lossy(&output.stdout);
-    serde_json::from_str(&output_str)
-        .map_err(|e| format!("Failed to parse ffprobe output: {}", e))
+    let parsed = serde_json::from_str(&output_str)
+        .map_err(|e| format!("Failed to parse ffprobe output: {}", e))?;
+    Ok(parsed)
 }
 
 fn main() {

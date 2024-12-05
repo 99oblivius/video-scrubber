@@ -140,16 +140,26 @@ async fn save_video(operation: SaveOperation) -> Result<(), String> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StreamInfo {
+    // Core codec information
     pub codec_type: String,
     #[serde(default)]
     pub codec_name: Option<String>,
     pub codec_long_name: Option<String>,
     pub profile: Option<String>,
+    pub level: Option<i32>,
+
+    // Frame-related
+    pub avg_frame_rate: String,
+    pub nb_frames: Option<i32>,
+    pub r_frame_rate: String,
+
+    // Audio-specific
     pub bit_rate: Option<String>,
     pub channels: Option<i32>,
     pub sample_rate: Option<String>,
-    pub r_frame_rate: String,
-    pub avg_frame_rate: String,
+
+    // Video-specific
+    pub color_space: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

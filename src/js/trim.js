@@ -154,6 +154,10 @@ export const setupTrim = (video, metadata) => {
     };
     
     const handleTrimKeyboard = (e) => {
+        if (e.code === 'KeyX' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            toggleTrimMode();
+            return;
+        }
         if (!trimBtn.classList.contains('active')) return;
         
         const char = e.key;

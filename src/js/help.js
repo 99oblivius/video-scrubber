@@ -43,6 +43,7 @@ export const setupHelpTip = (settings) => {
         controls: {
             title: 'Controls',
             shortcuts: [
+                { keys: ['X'], description: 'Toggle Trim Mode' },
                 { keys: ['[', ']'], description: 'Start/End Trim' },
                 { keys: ['L'], description: 'Loop' },
             ]

@@ -51,7 +51,7 @@ export const setupMetadata = (video) => {
         
         try {
             probeData = await invoke('get_video_info', { path: videoPath });
-            console.log(probeData);
+            printProbeData(probeData, videoPath);
             return probeData;
         } catch (error) {
             console.error('Failed to fetch probe data:', error);
@@ -113,7 +113,6 @@ export const setupMetadata = (video) => {
             
             const timeDisplay = $('.time-display');
             
-            // Start building metadata items
             const metadataItems = [`
                 <div class="time-info">
                     Time: <span id="timeDisplay">0.000</span>
@@ -141,7 +140,6 @@ export const setupMetadata = (video) => {
                         <span id="videoCodecDisplay">${videoCodec}</span>
                     </div>`];
 
-            // Only add audio codec if it exists
             if (audioCodec !== null) {
                 metadataItems.push(`
                     <div class="metadata-item">
@@ -150,10 +148,8 @@ export const setupMetadata = (video) => {
                     </div>`);
             }
 
-            // Close the metadata group
             metadataItems.push(`</div>`);
             
-            // Set the HTML content
             timeDisplay.innerHTML = metadataItems.join('');
         } catch (error) {
             console.error('Failed to update metadata display:', error);
@@ -188,7 +184,6 @@ export const setupMetadata = (video) => {
         });
     };
 
-    // Clear probe data when a new video is loaded
     video.addEventListener('loadstart', () => {
         probeData = null;
         detectedFPS = null;
@@ -206,4 +201,68 @@ export const setupMetadata = (video) => {
         detectFrameRate,
         updateMetadataDisplay,
     };
+};
+
+const printProbeData = (data, path) => {
+    const styles = {
+        header: 'color: #3B82F6; font-weight: bold; font-size: 13px;',
+        subheader: 'color: #3B82F6; font-weight: bold;',
+        label: 'color: #666;',
+        value: 'color: #444;',
+        path: 'color: #666;',
+        filename: 'color: #3B82F6; font-weight: bold;'
+    };
+
+    const formatValue = (value) => value ?? 'N/A';
+    const filename = path.split('/').pop().split('\\').pop();
+
+    const printStream = (stream, index) => {
+        const type = stream.codec_type.toLowerCase();
+        const isVideo = type === 'video';
+        
+        const groupFn = isVideo ? console.group : console.groupCollapsed;
+        groupFn.call(console, `%c${type.toUpperCase()} STREAM #${index}`, styles.subheader);
+
+        console.group('%cCodec', styles.label);
+        console.log(`%cName: %c${formatValue(stream.codec_name)}`, styles.label, styles.value);
+        console.log(`%cFull Name: %c${formatValue(stream.codec_long_name)}`, styles.label, styles.value);
+        console.log(`%cProfile: %c${formatValue(stream.profile)}`, styles.label, styles.value);
+        if (stream.level) console.log(`%cLevel: %c${formatValue(stream.level)}`, styles.label, styles.value);
+        console.groupEnd();
+
+        if (type === 'video') {
+            console.group('%cVideo', styles.label);
+            console.log(`%cFPS (avg): %c${formatValue(stream.avg_frame_rate)}`, styles.label, styles.value);
+            console.log(`%cFPS (base): %c${formatValue(stream.r_frame_rate)}`, styles.label, styles.value);
+            if (stream.nb_frames) console.log(`%cFrames: %c${formatValue(stream.nb_frames)}`, styles.label, styles.value);
+            console.groupEnd();
+        }
+
+        if (type === 'audio') {
+            console.group('%cAudio', styles.label);
+            if (stream.channels) console.log(`%cChannels: %c${formatValue(stream.channels)}`, styles.label, styles.value);
+            if (stream.sample_rate) console.log(`%cSample Rate: %c${formatValue(stream.sample_rate)} Hz`, styles.label, styles.value);
+            if (stream.bit_rate) console.log(`%cBit Rate: %c${formatValue(stream.bit_rate)} bps`, styles.label, styles.value);
+            console.groupEnd();
+        }
+
+        const additionalProps = Object.entries(stream)
+            .filter(([key]) => !['codec_type', 'codec_name', 'codec_long_name', 'profile', 'level', 
+                             'avg_frame_rate', 'r_frame_rate', 'nb_frames', 'channels', 
+                             'sample_rate', 'bit_rate'].includes(key))
+            .filter(([_, value]) => value != null);
+
+        if (additionalProps.length > 0) {
+            console.group('%cOther', styles.label);
+            additionalProps.forEach(([key, value]) => {
+                console.log(`%c${key}: %c${formatValue(value)}`, styles.label, styles.value);
+            });
+            console.groupEnd();
+        }
+        console.groupEnd();
+    };
+
+    console.group(`%c${path.replace(filename, '')}%c${filename}`, styles.path, styles.filename);
+    data.streams.forEach((stream, index) => printStream(stream, index));
+    console.groupEnd();
 };

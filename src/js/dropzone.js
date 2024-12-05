@@ -1,6 +1,5 @@
 const { open } = window.__TAURI__.dialog;
 const { convertFileSrc } = window.__TAURI__.core;
-const { invoke } = window.__TAURI__.core;
 
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);

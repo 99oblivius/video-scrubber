@@ -12,12 +12,28 @@ export const setupCrop = (video, settings) => {
     };
 
     const ASPECT_RATIOS = [
+        { value: 'custom', label: 'Custom' },
         { value: '1:1', label: '1:1' },
         { value: '16:9', label: '16:9' },
         { value: '4:3', label: '4:3' }
     ];
 
     const calculateCropDimensions = (videoWidth, videoHeight, ratio, preservePosition = false) => {
+        if (ratio === 'custom') {
+            const width = Math.min(videoWidth, Math.max(16, Math.round(videoWidth * (relativeCropSettings.widthPercent || 0.5))));
+            const height = Math.min(videoHeight, Math.max(16, Math.round(videoHeight * (relativeCropSettings.heightPercent || 0.5))));
+            const x = Math.round(videoWidth * (relativeCropSettings.xPercent || 0.5) - width / 2);
+            const y = Math.round(videoHeight * (relativeCropSettings.yPercent || 0.5) - height / 2);
+            return {
+                width: width % 2 === 0 ? width : width - 1,
+                height: height % 2 === 0 ? height : height - 1,
+                x: x % 2 === 0 ? x : x - 1,
+                y: y % 2 === 0 ? y : y - 1,
+                originalWidth: videoWidth,
+                originalHeight: videoHeight
+            };
+        }
+    
         const [w, h] = ratio.split(':').map(Number);
         const isVertical = settings.get('cropOrientation') === 'vertical';
         const targetRatio = isVertical ? h / w : w / h;
@@ -35,15 +51,12 @@ export const setupCrop = (video, settings) => {
         cropWidth = cropWidth % 2 === 0 ? cropWidth : cropWidth - 1;
         cropHeight = cropHeight % 2 === 0 ? cropHeight : cropHeight - 1;
         
-        // Calculate initial centered position
         const x = Math.round((videoWidth - cropWidth) / 2);
         const y = Math.round((videoHeight - cropHeight) / 2);
         
-        // Ensure position is even
         const finalX = x % 2 === 0 ? x : x - 1;
         const finalY = y % 2 === 0 ? y : y - 1;
-
-        // Update relative settings if not preserving position
+    
         if (!preservePosition) {
             relativeCropSettings = {
                 xPercent: 0.5,
@@ -107,13 +120,16 @@ export const setupCrop = (video, settings) => {
         e.stopPropagation();
         const overlay = $('.crop-overlay');
         const videoRect = video.getBoundingClientRect();
+        const ratio = $('#ratio-select').value;
+        const isCustom = ratio === 'custom';
+        
         const videoRatio = video.videoWidth / video.videoHeight;
         const containerRatio = videoRect.width / videoRect.height;
         
         const wrapperStyle = window.getComputedStyle(videoWrapper);
         const paddingLeft = parseFloat(wrapperStyle.paddingLeft);
         const paddingTop = parseFloat(wrapperStyle.paddingTop);
-
+    
         let displayWidth, displayHeight, xOffset, yOffset;
         if (videoRatio > containerRatio) {
             displayWidth = videoRect.width;
@@ -126,46 +142,99 @@ export const setupCrop = (video, settings) => {
             xOffset = (videoRect.width - displayWidth) / 2 + paddingLeft;
             yOffset = paddingTop;
         }
-
+    
         const scale = displayWidth / video.videoWidth;
         const initialX = e.clientX;
         const initialY = e.clientY;
+        const initialOverlayRect = overlay.getBoundingClientRect();
         const initialLeft = parseFloat(overlay.style.left);
         const initialTop = parseFloat(overlay.style.top);
-
+        const initialWidth = parseFloat(overlay.style.width);
+        const initialHeight = parseFloat(overlay.style.height);
+    
         const handleDrag = (e) => {
             const deltaX = e.clientX - initialX;
             const deltaY = e.clientY - initialY;
-
-            const minX = xOffset;
-            const minY = yOffset;
-            const maxX = xOffset + displayWidth - overlay.offsetWidth;
-            const maxY = yOffset + displayHeight - overlay.offsetHeight;
-
-            const newLeft = Math.max(minX, Math.min(maxX, initialLeft + deltaX));
-            const newTop = Math.max(minY, Math.min(maxY, initialTop + deltaY));
-
+    
+            if (!isCustom) {
+                const minX = xOffset;
+                const minY = yOffset;
+                const maxX = xOffset + displayWidth - overlay.offsetWidth;
+                const maxY = yOffset + displayHeight - overlay.offsetHeight;
+    
+                const newLeft = Math.max(minX, Math.min(maxX, initialLeft + deltaX));
+                const newTop = Math.max(minY, Math.min(maxY, initialTop + deltaY));
+    
+                overlay.style.left = `${Math.round(newLeft)}px`;
+                overlay.style.top = `${Math.round(newTop)}px`;
+    
+                const xInVideo = Math.round((newLeft - xOffset) / scale);
+                const yInVideo = Math.round((newTop - yOffset) / scale);
+                
+                relativeCropSettings.xPercent = xInVideo / video.videoWidth;
+                relativeCropSettings.yPercent = yInVideo / video.videoHeight;
+    
+                window.cropSettings = {
+                    ...window.cropSettings,
+                    x: xInVideo,
+                    y: yInVideo
+                };
+                return;
+            }
+    
+            let newLeft = initialLeft;
+            let newTop = initialTop;
+            let newWidth = initialWidth;
+            let newHeight = initialHeight;
+    
+            const isLeft = corner.includes('l');
+            const isTop = corner.includes('t');
+    
+            if (isLeft) {
+                newLeft = Math.max(xOffset, Math.min(initialLeft + initialWidth - 16 * scale, initialLeft + deltaX));
+                newWidth = initialWidth - (newLeft - initialLeft);
+            } else {
+                newWidth = Math.max(16 * scale, Math.min(xOffset + displayWidth - initialLeft, initialWidth + deltaX));
+            }
+    
+            if (isTop) {
+                newTop = Math.max(yOffset, Math.min(initialTop + initialHeight - 16 * scale, initialTop + deltaY));
+                newHeight = initialHeight - (newTop - initialTop);
+            } else {
+                newHeight = Math.max(16 * scale, Math.min(yOffset + displayHeight - initialTop, initialHeight + deltaY));
+            }
+    
             overlay.style.left = `${Math.round(newLeft)}px`;
             overlay.style.top = `${Math.round(newTop)}px`;
-
+            overlay.style.width = `${Math.round(newWidth)}px`;
+            overlay.style.height = `${Math.round(newHeight)}px`;
+    
             const xInVideo = Math.round((newLeft - xOffset) / scale);
             const yInVideo = Math.round((newTop - yOffset) / scale);
-            
-            relativeCropSettings.xPercent = xInVideo / video.videoWidth;
-            relativeCropSettings.yPercent = yInVideo / video.videoHeight;
-
+            const widthInVideo = Math.round(newWidth / scale);
+            const heightInVideo = Math.round(newHeight / scale);
+    
+            relativeCropSettings = {
+                xPercent: (xInVideo + widthInVideo/2) / video.videoWidth,
+                yPercent: (yInVideo + heightInVideo/2) / video.videoHeight,
+                widthPercent: widthInVideo / video.videoWidth,
+                heightPercent: heightInVideo / video.videoHeight
+            };
+    
             window.cropSettings = {
                 ...window.cropSettings,
                 x: xInVideo,
-                y: yInVideo
+                y: yInVideo,
+                width: widthInVideo,
+                height: heightInVideo
             };
         };
-
+    
         const handleDragEnd = () => {
             document.removeEventListener('mousemove', handleDrag);
             document.removeEventListener('mouseup', handleDragEnd);
         };
-
+    
         document.addEventListener('mousemove', handleDrag);
         document.addEventListener('mouseup', handleDragEnd);
     };

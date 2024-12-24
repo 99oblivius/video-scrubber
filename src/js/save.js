@@ -118,8 +118,6 @@ export const setupSave = (video) => {
         const trimStart = window.trimStart;
         const trimEnd = window.trimEnd;
         
-        console.log('Window trim settings:', window.trimStart);
-        console.log('Window trim settings:', window.trimEnd);
         if (trimStart !== undefined && trimEnd !== undefined) {
             return {
                 start_time: trimStart,
@@ -131,8 +129,6 @@ export const setupSave = (video) => {
 
     const getCropChanges = () => {
         const crop = $('#crop-button');
-        console.log('Crop active:', crop?.classList.contains('active'));
-        console.log('Window crop settings:', window.cropSettings);
         
         if (!crop?.classList.contains('active')) return null;
         

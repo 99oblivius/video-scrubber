@@ -412,6 +412,22 @@ export const setupCrop = (video, settings) => {
         }
     };
 
+    const handleCropKeyboard = (e) => {
+        if (e.code === 'KeyC' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            if (!cropBtn.classList.contains('active')) {
+                // When first activating, ensure centered position
+                relativeCropSettings = {
+                    xPercent: 0.5,
+                    yPercent: 0.5,
+                    widthPercent: 0,
+                    heightPercent: 0
+                };
+            }
+            toggleCrop();
+        }
+    };
+
     const getCurrentCrop = () => cropBtn.classList.contains('active') ? window.cropSettings : null;
 
     const init = () => {
@@ -429,6 +445,7 @@ export const setupCrop = (video, settings) => {
             }
             toggleCrop();
         });
+        document.addEventListener('keypress', handleCropKeyboard);
         video.addEventListener('loadedmetadata', reset);
         video.addEventListener('videoFileLoaded', reset);
         
@@ -438,6 +455,10 @@ export const setupCrop = (video, settings) => {
             }
         });
         resizeObserver.observe(videoWrapper);
+
+        window.addEventListener('unload', () => {
+            document.removeEventListener('keypress', handleCropKeyboard);
+        });
     };
 
     return {

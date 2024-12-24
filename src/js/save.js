@@ -118,22 +118,27 @@ export const setupSave = (video) => {
         const trimStart = window.trimStart;
         const trimEnd = window.trimEnd;
         
+        console.log('Window trim settings:', window.trimStart);
+        console.log('Window trim settings:', window.trimEnd);
         if (trimStart !== undefined && trimEnd !== undefined) {
             return {
-                startTime: trimStart,
-                endTime: trimEnd
+                start_time: trimStart,
+                end_time: trimEnd
             };
         }
         return null;
     };
 
     const getCropChanges = () => {
-        const crop = $('#crop');
+        const crop = $('#crop-button');
+        console.log('Crop active:', crop?.classList.contains('active'));
+        console.log('Window crop settings:', window.cropSettings);
+        
         if (!crop?.classList.contains('active')) return null;
         
         const cropSettings = window.cropSettings;
         if (!cropSettings) return null;
-
+    
         return {
             width: cropSettings.width,
             height: cropSettings.height,

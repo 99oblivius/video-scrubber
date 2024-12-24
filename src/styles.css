@@ -310,6 +310,38 @@ button:hover {
   border: 2px solid var(--accent);
   pointer-events: none;
   z-index: 10;
+  box-sizing: border-box;
+}
+
+.crop-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+  z-index: 100;
+  pointer-events: auto;
+  cursor: move;
+  box-sizing: border-box;
+}
+
+/* Position handles on the outside of the overlay */
+.crop-handle.tl { 
+  top: -7px; 
+  left: -7px;
+}
+.crop-handle.tr { 
+  top: -7px; 
+  right: -7px;
+}
+.crop-handle.bl { 
+  bottom: -7px; 
+  left: -7px;
+}
+.crop-handle.br { 
+  bottom: -7px; 
+  right: -7px;
 }
 
 .crop-overlay::before,

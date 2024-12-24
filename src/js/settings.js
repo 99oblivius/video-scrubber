@@ -4,7 +4,9 @@ const DEFAULT_SETTINGS = {
     loop: true,
     volume: 1.0,
     hasSeenHelpTip: false,
-    version: '1.0'
+    version: '1.0',
+    cropAspectRatio: '16:9',
+    cropOrientation: 'vertical'
 };
 
 export const setupSettings = () => {

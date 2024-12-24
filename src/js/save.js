@@ -128,17 +128,18 @@ export const setupSave = (video) => {
     };
 
     const getCropChanges = () => {
-        const cropSettings = window.cropSettings;
+        const crop = $('#crop');
+        if (!crop?.classList.contains('active')) return null;
         
-        if (cropSettings) {
-            return {
-                width: cropSettings.width,
-                height: cropSettings.height,
-                x: cropSettings.x,
-                y: cropSettings.y
-            };
-        }
-        return null;
+        const cropSettings = window.cropSettings;
+        if (!cropSettings) return null;
+
+        return {
+            width: cropSettings.width,
+            height: cropSettings.height,
+            x: cropSettings.x,
+            y: cropSettings.y
+        };
     };
 
     const gatherChanges = () => {
@@ -275,10 +276,20 @@ export const setupSave = (video) => {
 
             await message(`Save succeeded: ${outputPath}`, { title: 'Video Editor' });
             
+            // Clean up UI after successful save
             const compress = $('#compress');
+            const crop = $('#crop');
+            const cropBtn = $('#crop-button');
+
             if (compress?.classList.contains('active')) {
                 compress.classList.remove('active');
                 compressBtn.classList.remove('active');
+            }
+
+            if (crop?.classList.contains('active')) {
+                crop.classList.remove('active');
+                cropBtn.classList.remove('active');
+                $('.crop-overlay').style.display = 'none';
             }
 
             return true;

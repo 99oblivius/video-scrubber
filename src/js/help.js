@@ -96,6 +96,10 @@ export const setupHelpTip = (settings) => {
         helpBtn.onclick = () => {
             tooltip.classList.toggle('active');
             helpBtn.classList.toggle('active');
+            if (helpTip.classList.contains('show')) {
+                helpTip.classList.remove('show');
+                settings.set('hasSeenHelpTip', true);
+            }
         };
         
         document.addEventListener('click', e => {

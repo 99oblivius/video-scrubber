@@ -7,6 +7,7 @@ import { setupHelpTip } from './help.js';
 import { setupTrim } from './trim.js';
 
 import { setupCompress } from './compress.js';
+import { setupCrop } from './crop.js';
 import { setupSave } from './save.js';
 
 const printWelcomeMessage = () => {
@@ -47,6 +48,7 @@ const player = (() => {
         const help = setupHelpTip(settings);
         const trim = setupTrim(v, metadata);
         const compress = setupCompress(v);
+        const crop = setupCrop(v);
         const save = setupSave(v);
 
         // Initialize all modules
@@ -59,6 +61,7 @@ const player = (() => {
         help.init();
         trim.init();
         compress.init();
+        crop.init();
         save.init();
 
         requestAnimationFrame(progress.updateTimeDisplay);

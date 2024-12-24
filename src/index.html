@@ -57,6 +57,15 @@
                         <button class="compress-save-button">Save</button>
                     </div>
                 </div>
+                <div class="crop" id="crop">
+                    <div class="crop-content">
+                        <div class="crop-controls">
+                            <button class="editor-button" id="no-crop-button">✕</button>
+                            <select class="crop-select" id="ratio-select"></select>
+                            <button class="editor-button" id="flip-orientation-button">⟳</button>
+                        </div>
+                    </div>
+                </div>
                 <button class="editor-button" id="trim-button">✂️</button>
                 <button class="editor-button" id="crop-button">⌗</button>
                 <button class="editor-button">🔊</button>
@@ -73,6 +82,7 @@
                     <button class="icon-btn" id="helpBtn">
                         <img src="/assets/icons/help.svg" alt="Help">
                     </button>
+                    <div id="helpTip" class="help-tip"></div>
                     <button class="icon-btn" id="themeBtn">☀️</button>
                 </div>
             </div>

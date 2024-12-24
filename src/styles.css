@@ -279,11 +279,12 @@ button:hover {
 }
 
 /* Compress Panel Styles */
-.compress { 
+.compress, .crop { 
   position: relative;
 }
 
-.compress .compress-content {
+.compress .compress-content,
+.crop .crop-content {
   position: absolute;
   bottom: 80px;
   right: auto;
@@ -298,8 +299,72 @@ button:hover {
   border: 1px solid var(--border);
 }
 
-.compress.active .compress-content {
+.compress.active .compress-content,
+.crop.active .crop-content {
   display: block;
+}
+
+.crop-overlay {
+  display: none;
+  position: absolute;
+  border: 2px solid var(--accent);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.crop-overlay::before,
+.crop-overlay::after,
+.crop-overlay > span::before,
+.crop-overlay > span::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translate(-50%, -50%);
+  z-index: 100;
+}
+
+.crop-overlay::before { top: 0; left: 0; }
+.crop-overlay::after { top: 0; left: 100%; }
+.crop-overlay > span::before { top: 100%; left: 0; }
+.crop-overlay > span::after { top: 100%; left: 100%; }
+
+.crop-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.crop-select {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-width: 100px;
+}
+
+.crop-select:hover {
+  border-color: var(--accent);
+}
+
+.crop-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.crop .editor-button {
+  padding: 8px;
+  width: 37px;
+  height: 37px;
 }
 
 /* Compress Component Styles */

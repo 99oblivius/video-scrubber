@@ -47,11 +47,23 @@ export const setupCompress = (video) => {
         setupQualitySlider();
     };
 
-    const toggleCompress = () => {
+    const toggleCompress = (forceClose = false) => {
+        if (forceClose) {
+            compress.classList.remove('active');
+            compressBtn.classList.remove('active');
+            return;
+        }
+
+        // Close crop window if open
+        const crop = $('#crop');
+        if (crop?.classList.contains('active')) {
+            crop.classList.remove('active');
+            $('#crop-button').classList.remove('active');
+        }
+
         compress.classList.toggle('active');
         compressBtn.classList.toggle('active');
     
-        // Handle outside clicks
         const handleOutsideClick = (e) => {
             if (!compress.contains(e.target) && !compressBtn.contains(e.target)) {
                 compress.classList.remove('active');

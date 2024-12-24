@@ -2,6 +2,7 @@ export const setupCrop = (video) => {
     const $ = document.querySelector.bind(document);
     const crop = $('#crop');
     const cropBtn = $('#crop-button');
+    let isVertical = true;
 
     const ASPECT_RATIOS = [
         { value: '1:1', label: '1:1' },
@@ -11,7 +12,7 @@ export const setupCrop = (video) => {
 
     const calculateCropDimensions = (videoWidth, videoHeight, ratio) => {
         const [w, h] = ratio.split(':').map(Number);
-        const targetRatio = w / h;
+        const targetRatio = isVertical ? w / h : h / w;
         const currentRatio = videoWidth / videoHeight;
         
         let cropWidth, cropHeight;
@@ -46,7 +47,6 @@ export const setupCrop = (video) => {
         select.addEventListener('change', () => {
             const selectedValue = select.value;
             if (selectedValue === 'none') {
-                crop.classList.remove('active');
                 cropBtn.classList.remove('active');
                 $('.crop-overlay').style.display = 'none';
             } else {
@@ -100,6 +100,7 @@ export const setupCrop = (video) => {
         overlay.style.height = `${displayHeight}px`;
         overlay.style.left = `${displayX + wrapperRect.left - videoRect.left}px`;
         overlay.style.top = `${displayY + wrapperRect.top - videoRect.top}px`;
+        overlay.style.display = 'block';
         
         // Store the actual crop dimensions for saving
         window.cropSettings = dims;
@@ -118,20 +119,20 @@ export const setupCrop = (video) => {
             video.parentElement.appendChild(overlay);
         }
 
+        const flipBtn = $('#flip-orientation-button');
+        flipBtn.textContent = '▯'; // Vertical rectangle by default
+
         // Setup orientation toggle
-        $('#flip-orientation-button').addEventListener('click', () => {
-            const select = $('#ratio-select');
-            const ratio = select.value;
-            const [w, h] = ratio.split(':');
-            select.value = `${h}:${w}`;
+        flipBtn.addEventListener('click', () => {
+            isVertical = !isVertical;
+            flipBtn.textContent = isVertical ? '▭' : '▯';
             if (cropBtn.classList.contains('active')) {
-                updateCropOverlay(select.value);
+                updateCropOverlay($('#ratio-select').value);
             }
         });
 
         // Setup no crop button
         $('#no-crop-button').addEventListener('click', () => {
-            crop.classList.remove('active');
             cropBtn.classList.remove('active');
             $('.crop-overlay').style.display = 'none';
         });
@@ -139,34 +140,16 @@ export const setupCrop = (video) => {
 
     const toggleCrop = () => {
         crop.classList.toggle('active');
-        cropBtn.classList.toggle('active');
-        $('.crop-overlay').style.display = crop.classList.contains('active') ? 'block' : 'none';
-    
-        if (crop.classList.contains('active')) {
+        
+        if (!cropBtn.classList.contains('active')) {
+            cropBtn.classList.add('active');
             updateCropOverlay($('#ratio-select').value);
-            
-            // Handle outside clicks
-            setTimeout(() => {
-                document.addEventListener('click', handleOutsideClick);
-            }, 0);
-        } else {
-            document.removeEventListener('click', handleOutsideClick);
-        }
-    };
-
-    const handleOutsideClick = (e) => {
-        if (!crop.contains(e.target) && !cropBtn.contains(e.target)) {
-            crop.classList.remove('active');
-            cropBtn.classList.remove('active');
-            $('.crop-overlay').style.display = 'none';
-            document.removeEventListener('click', handleOutsideClick);
         }
     };
 
     const getCurrentCrop = () => {
+        if (!cropBtn.classList.contains('active')) return null;
         const ratio = $('#ratio-select').value;
-        if (ratio === 'none' || !cropBtn.classList.contains('active')) return null;
-        
         return calculateCropDimensions(video.videoWidth, video.videoHeight, ratio);
     };
 

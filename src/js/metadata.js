@@ -162,10 +162,21 @@ export const setupMetadata = (video) => {
         let startX;
         let scrollLeft;
 
+        slider.addEventListener('mousedown', (e) => {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        });
+
+        slider.addEventListener('auxclick', (e) => {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        });
+
         slider.addEventListener('wheel', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
             slider.scrollLeft += e.deltaY * 0.5;
         }, { passive: false, capture: true });
 

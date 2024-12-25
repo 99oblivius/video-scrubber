@@ -260,7 +260,7 @@ button:hover {
   min-width: max-content;
   justify-self: start;
   margin-right: 120px;
-  margin-left: -8px;
+  margin-left: -16px;
   gap: 8px;
   margin-bottom: 11px;
   z-index: 100;

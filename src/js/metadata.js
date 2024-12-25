@@ -162,6 +162,13 @@ export const setupMetadata = (video) => {
         let startX;
         let scrollLeft;
 
+        slider.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            slider.scrollLeft += e.deltaY * 0.5;
+        }, { passive: false, capture: true });
+
         slider.addEventListener('mousedown', (e) => {
             isDown = true;
             slider.classList.add('active');
@@ -182,7 +189,28 @@ export const setupMetadata = (video) => {
             const walk = (x - startX);
             slider.scrollLeft = scrollLeft - walk * 0.667;
         });
-    };
+
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('active');
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDown) return;
+            isDown = false;
+            slider.classList.remove('active');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX);
+            slider.scrollLeft = scrollLeft - walk * 0.667;
+        });
+    }
 
     video.addEventListener('loadstart', () => {
         probeData = null;

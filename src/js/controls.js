@@ -150,6 +150,9 @@ export const setupControls = (video, metadata, settings) => {
         document.addEventListener('contextmenu', event => event.preventDefault());
         window.addEventListener('wheel', (e) => {
             if (e.ctrlKey) return;
+            
+            if (e.target.closest('.time-display')) return;
+            
             e.preventDefault();
             changeVolume(e.deltaY > 0 ? -0.05 : 0.05);
         }, { passive: false });

@@ -20,10 +20,27 @@ export const setupCrop = (video, settings) => {
 
     const calculateCropDimensions = (videoWidth, videoHeight, ratio, preservePosition = false) => {
         if (ratio === 'custom') {
-            const width = Math.min(videoWidth, Math.max(16, Math.round(videoWidth * (relativeCropSettings.widthPercent || 0.5))));
-            const height = Math.min(videoHeight, Math.max(16, Math.round(videoHeight * (relativeCropSettings.heightPercent || 0.5))));
-            const x = Math.round(videoWidth * (relativeCropSettings.xPercent || 0.5) - width / 2);
-            const y = Math.round(videoHeight * (relativeCropSettings.yPercent || 0.5) - height / 2);
+            let width, height, x, y;
+            
+            if (relativeCropSettings.widthPercent === 0 && relativeCropSettings.heightPercent === 0) {
+                width = videoWidth;
+                height = videoHeight;
+                x = 0;
+                y = 0;
+                
+                relativeCropSettings = {
+                    xPercent: 0.5,
+                    yPercent: 0.5,
+                    widthPercent: 1,
+                    heightPercent: 1
+                };
+            } else {
+                width = Math.min(videoWidth, Math.max(16, Math.round(videoWidth * (relativeCropSettings.widthPercent))));
+                height = Math.min(videoHeight, Math.max(16, Math.round(videoHeight * (relativeCropSettings.heightPercent))));
+                x = Math.min(videoWidth, Math.max(0, Math.round(videoWidth * relativeCropSettings.xPercent - width / 2)));
+                y = Math.min(videoWidth, Math.max(0, Math.round(videoHeight * relativeCropSettings.yPercent - height / 2)));
+            }
+
             return {
                 width: width % 2 === 0 ? width : width - 1,
                 height: height % 2 === 0 ? height : height - 1,

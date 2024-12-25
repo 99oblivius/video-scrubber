@@ -60,7 +60,6 @@ export const setupSave = (video) => {
         'auto': ['mp4', 'webm', 'mkv', 'mov', 'avi']
     };
 
-    // Update container warning with clear message and styling
     const showContainerWarning = (compatibleContainers, currentExt) => {
         let warningEl = $('.codec-container-warning');
         if (!warningEl) {
@@ -75,13 +74,11 @@ export const setupSave = (video) => {
             return compatibleContainers;
         }
 
-        // Sort containers to put current extension first if compatible
         const sortedContainers = compatibleContainers.sort((a, b) => {
             if (currentExt) {
                 if (a === currentExt) return -1;
                 if (b === currentExt) return 1;
             }
-            // Secondary sort by common preference
             const preference = ['mp4', 'webm', 'mkv', 'mov', 'avi'];
             return preference.indexOf(a) - preference.indexOf(b);
         });

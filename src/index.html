@@ -34,36 +34,34 @@
 
         <div class="controls">
             <div class="editor-row">
-                <div class="compress" id="compress">
-                    <div class="compress-content">
-                        <div class="compress-select-container">
-                            <label class="compress-label">Video Codec</label>
-                            <select class="compress-select" id="video-codec-select"></select>
-                        </div>
-                        <div class="compress-select-container">
-                            <label class="compress-label">Audio Codec</label>
-                            <select class="compress-select" id="audio-codec-select"></select>
-                        </div>
-                        <div class="compress-select-container">
-                            <label class="compress-label" for="quality-slider">Quality</label>
-                            <div class="slider-container">
-                                <input type="range" 
-                                    id="quality-slider" 
-                                    class="compress-slider" 
-                                    min="0" max="100" value="75"/>
-                                <span class="slider-value">75%</span>
+                <div class="editor-panels">
+                    <div class="compress" id="compress">
+                        <div class="compress-content">
+                            <div class="compress-select-container">
+                                <label class="compress-label">Video Codec</label>
+                                <select class="compress-select" id="video-codec-select"></select>
                             </div>
+                            <div class="compress-select-container">
+                                <label class="compress-label">Audio Codec</label>
+                                <select class="compress-select" id="audio-codec-select"></select>
+                            </div>
+                            <div class="compress-select-container">
+                                <label class="compress-label" for="quality-slider">Quality</label>
+                                <div class="slider-container">
+                                    <input type="range" id="quality-slider" class="compress-slider" min="0" max="100" value="75"/>
+                                    <span class="slider-value">75%</span>
+                                </div>
+                            </div>
+                            <button class="compress-save-button">Save</button>
                         </div>
-                        <button class="compress-save-button">Save</button>
                     </div>
-                </div>
-                <div class="crop" id="crop">
-                    <div class="crop-content">
-                        <div class="crop-controls">
-                            <button class="editor-button" id="no-crop-button">✕</button>
-                            <select class="crop-select" id="ratio-select"></select>
-                            <button class="editor-button" id="center-crop-button">⊕</button>
-                            <button class="editor-button" id="flip-orientation-button">⟳</button>
+                    <div class="crop" id="crop">
+                        <div class="crop-content">
+                            <div class="crop-controls">
+                                <button class="editor-button" id="no-crop-button">✕</button>
+                                <select class="crop-select" id="ratio-select"></select>
+                                <button class="editor-button" id="flip-orientation-button">⟳</button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -260,7 +260,7 @@ button:hover {
   min-width: max-content;
   justify-self: start;
   margin-right: 120px;
-  margin-left: -16px;
+  margin-left: -8px;
   gap: 8px;
   margin-bottom: 11px;
   z-index: 100;
@@ -285,18 +285,23 @@ button:hover {
 
 .compress .compress-content,
 .crop .crop-content {
-  position: absolute;
-  bottom: 80px;
-  right: auto;
-  left: -20px;
-  background: var(--surface);
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 4px 5px 15px rgba(0,0,0,.15);
-  width: 320px;
-  display: none;
-  z-index: 1000;
-  border: 1px solid var(--border);
+    position: absolute;
+    bottom: 80px;
+    right: auto;
+    left: -13px;
+    background: var(--surface);
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 4px 5px 15px rgba(0,0,0,.15);
+    width: 320px;
+    display: none;
+    z-index: 1000;
+    border: 1px solid var(--border);
+}
+
+.editor-panels {
+  position: relative;
+  display: flex;
 }
 
 .compress.active .compress-content,

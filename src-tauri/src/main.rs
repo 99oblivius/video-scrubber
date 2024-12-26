@@ -2,6 +2,24 @@
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;
+use std::os::windows::process::CommandExt;
+use tauri::AppHandle;
+use tauri::Manager;
+
+fn get_ffmpeg_path(app: &AppHandle, binary: &str) -> String {
+    let binary_name = if cfg!(windows) {
+        format!("{}.exe", binary)
+    } else {
+        binary.to_string()
+    };
+    
+    app.path().resource_dir()
+        .expect("failed to get resource dir")
+        .join("bin")
+        .join(binary_name)
+        .to_string_lossy()
+        .to_string()
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SourceInfo {
@@ -82,9 +100,10 @@ fn get_audio_codec_param(codec: &str) -> &'static str {
 }
 
 // Function to build ffmpeg command based on save operation
-fn build_ffmpeg_command(operation: &SaveOperation) -> Command {
-    let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-i").arg(&operation.source.path);
+fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
+    let mut cmd = Command::new(get_ffmpeg_path(app, "ffmpeg"));
+    cmd.creation_flags(0x08000000) // CREATE_NO_WINDOW flag for Windows
+        .arg("-i").arg(&operation.source.path);
 
     // Add trim settings if present
     if let Some(trim) = &operation.changes.trim {
@@ -118,9 +137,9 @@ fn build_ffmpeg_command(operation: &SaveOperation) -> Command {
 }
 
 #[tauri::command]
-async fn save_video(operation: SaveOperation) -> Result<(), String> {
+async fn save_video(app: AppHandle, operation: SaveOperation) -> Result<(), String> {
     // Build the ffmpeg command
-    let mut cmd = build_ffmpeg_command(&operation);
+    let mut cmd = build_ffmpeg_command(&app, &operation);
 
     // Execute the command
     match cmd.output() {
@@ -168,8 +187,9 @@ pub struct FFprobeOutput {
 }
 
 #[tauri::command]
-async fn get_video_info(path: String) -> Result<FFprobeOutput, String> {
-    let output = Command::new("ffprobe")
+async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, String> {
+    let output = Command::new(get_ffmpeg_path(&app, "ffprobe"))
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW flag for Windows
         .args([
             "-v", "quiet",
             "-print_format", "json",

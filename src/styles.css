@@ -754,7 +754,7 @@ button:hover {
 }
 
 /* Media Queries */
-@media (min-width: 890px) {
+@media (min-width: 833px) {
   .editor-row {
       justify-self: end;
   }

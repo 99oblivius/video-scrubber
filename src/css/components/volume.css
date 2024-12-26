@@ -1,0 +1,13 @@
+.volume-indicator {
+  @apply absolute top-5 right-5 bg-surface px-3 py-2 rounded-lg flex items-center gap-2 opacity-0 transition-opacity duration-200 border text-[var(--text)];
+  border-color: var(--border);
+}
+
+.volume-icon {
+  @apply w-6 h-6;
+  filter: var(--text-filter);
+}
+
+.volume-text {
+  @apply font-mono;
+}

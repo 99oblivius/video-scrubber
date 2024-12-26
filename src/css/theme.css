@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #121212;
+  --surface: #1E1E1E;
+  --text: #E0E0E0;
+  --accent: #3B82F6;
+  --secondary-accent: #d98cf027;
+  --hover: #2563EB;
+  --border: rgba(255,255,255,.1);
+  --text-filter: invert(100%) brightness(100%);
+  --accent-filter: invert(48%) sepia(98%) saturate(1654%) hue-rotate(202deg) brightness(99%) contrast(96%);
+}
+
+[data-theme=light] {
+  --bg: #F5F5F5;
+  --surface: #FFFFFF;
+  --secondary-accent: #ce2cff3b;
+  --text: #121212;
+  --border: rgba(0,0,0,.1);
+  --text-filter: none;
+}

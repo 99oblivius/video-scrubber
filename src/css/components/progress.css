@@ -1,0 +1,22 @@
+.progress-container {
+  @apply h-6 cursor-pointer relative mx-3 mb-3 flex-shrink-0;
+}
+
+.progress-bar {
+  @apply absolute left-0 right-0 top-1/2 h-[3px] bg-gray-500/20 rounded-sm -translate-y-1/2;
+}
+
+.progress-fill {
+  @apply absolute left-0 top-0 h-full rounded-sm;
+  background: var(--accent);
+}
+
+.progress-handle {
+  @apply absolute top-1/2 w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 cursor-grab z-10;
+  background: var(--accent);
+}
+
+.progress-hover-time {
+  @apply fixed bg-surface px-2 py-1 rounded text-sm -translate-x-1/2 pointer-events-none opacity-0 transition-opacity duration-200 whitespace-nowrap z-[1000] border;
+  border-color: var(--border);
+}

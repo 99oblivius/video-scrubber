@@ -1,0 +1,142 @@
+.editor-row {
+  @apply flex flex-row min-w-max gap-2 mb-[11px] z-[100] absolute;
+  right: 20px;
+  top: 20px;
+}
+
+.editor-button {
+  @apply w-[50px] h-[37px] overflow-hidden text-center flex items-center justify-center text-base;
+  background: var(--secondary-accent);
+}
+
+.editor-button.active {
+  @apply text-white;
+  background: var(--accent);
+}
+
+.compress, .crop { 
+  @apply relative;
+}
+
+.compress .compress-content,
+.crop .crop-content {
+  @apply absolute bottom-20 left-[-13px] bg-surface p-4 rounded-lg shadow-lg w-[320px] hidden z-[1000] border;
+  border-color: var(--border);
+  box-shadow: 4px 5px 15px rgba(0,0,0,.15);
+}
+
+.editor-panels {
+  @apply relative flex;
+}
+
+.compress.active .compress-content,
+.crop.active .crop-content {
+  @apply block;
+}
+
+/* Compress specific styles */
+.compress-select-container {
+  @apply mb-4;
+}
+
+.compress-label {
+  @apply block mb-2 text-[var(--text)] text-sm opacity-80;
+}
+
+.compress-select {
+  @apply w-full p-2 rounded-md border bg-[var(--bg)] text-[var(--text)] text-sm cursor-pointer transition-colors;
+  border-color: var(--border);
+}
+
+.compress-select:hover {
+  border-color: var(--accent);
+}
+
+.compress-select:focus {
+  @apply outline-none;
+  border-color: var(--accent);
+}
+
+/* Slider styles */
+.slider-container {
+  @apply flex items-center gap-3;
+}
+
+.compress-slider {
+  @apply flex-1 h-1 rounded-sm bg-[var(--bg)] outline-none appearance-none;
+}
+
+.compress-slider::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 rounded-full cursor-pointer transition-colors;
+  background: var(--accent);
+}
+
+.compress-slider::-webkit-slider-thumb:hover {
+  background: var(--hover);
+}
+
+.slider-value {
+  @apply min-w-[48px] text-[var(--text)] text-sm font-mono;
+}
+
+/* Crop specific styles */
+.crop-controls {
+  @apply flex gap-2 items-center;
+}
+
+.crop-select {
+  @apply flex-1 p-2 rounded-md border bg-[var(--bg)] text-[var(--text)] text-sm cursor-pointer transition-colors min-w-[100px];
+  border-color: var(--border);
+}
+
+.crop-select:hover {
+  border-color: var(--accent);
+}
+
+.crop-select:focus {
+  @apply outline-none;
+  border-color: var(--accent);
+}
+
+.crop .editor-button {
+  @apply p-2 w-[37px] h-[37px] text-base;
+}
+
+/* Compress save button */
+.compress-save-button {
+  @apply w-full p-2.5 mt-2 rounded-md bg-[var(--accent)] text-white border-none cursor-pointer text-sm transition-colors;
+}
+
+.compress-save-button:hover {
+  background: var(--hover);
+}
+
+.compress-save-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+@media (min-width: 890px) {
+  .editor-row {
+    right: 20px;
+    top: 20px;
+  }
+  .compress .compress-content {
+    @apply right-[-380px] left-auto;
+  }
+}
+
+@media (max-width: 889px) {
+  .editor-row {
+    right: 20px;
+    top: 20px;
+  }
+  .button-row {
+    @apply relative;
+  }
+}
+
+@media (max-width: 640px) {
+  .editor-row {
+    @apply right-5 top-5;
+  }
+}

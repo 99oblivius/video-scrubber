@@ -1,0 +1,29 @@
+.time-display {
+  @apply font-mono text-[1.1em] py-[9px] px-3 bg-[var(--bg)] transition-colors rounded-lg border flex gap-6 h-[46px] items-center overflow-x-auto;
+  border-color: var(--border);
+}
+
+.time-display::-webkit-scrollbar {
+  @apply hidden;
+}
+
+.time-info {
+  @apply flex mr-auto whitespace-nowrap pr-6 border-r gap-6 flex-shrink-0;
+  border-color: var(--border);
+}
+
+.metadata-group {
+  @apply flex gap-6 ml-auto flex-shrink-0;
+}
+
+.metadata-item {
+  @apply flex items-center gap-1.5 whitespace-nowrap opacity-85;
+}
+
+.metadata-label {
+  @apply opacity-70;
+}
+
+.fps-display {
+  @apply text-sm text-[var(--text)] opacity-80;
+}

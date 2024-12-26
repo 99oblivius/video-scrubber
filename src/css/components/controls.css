@@ -1,0 +1,44 @@
+.controls {
+  @apply bg-surface p-5 rounded-xl grid border min-w-fit transition-colors relative;
+  border-color: var(--border);
+}
+
+.button-row {
+  @apply flex flex-row min-w-max gap-2 mb-3 overflow-hidden;
+}
+
+button {
+  @apply px-4 py-2.5 rounded-lg border-none cursor-pointer transition-colors text-sm flex-shrink-0 h-[37px] leading-none overflow-hidden whitespace-nowrap;
+  background: var(--accent);
+  color: white;
+}
+
+button:hover {
+  background: var(--hover);
+}
+
+.icon-btn {
+  @apply bg-transparent w-9 h-9 rounded-full flex items-center justify-center p-2;
+  color: var(--text);
+}
+
+.icon-btn img {
+  @apply w-5 h-5;
+  filter: var(--text-filter);
+}
+
+.icon-btn:hover {
+  @apply bg-opacity-20 bg-gray-500;
+}
+
+.icon-btn.active img {
+  filter: var(--accent-filter);
+}
+
+.header {
+  @apply flex justify-between items-center relative mb-3;
+}
+
+.control-buttons {
+  @apply flex self-end gap-0.5;
+}

@@ -1,0 +1,29 @@
+.trim-handle {
+  @apply absolute top-1/2 w-1 h-6 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize rounded-sm z-10;
+  background: var(--accent);
+}
+
+.trim-handle:hover {
+  background: var(--hover);
+}
+
+.trim-handle.left-handle {
+  @apply rounded-tr-none rounded-br-none;
+}
+
+.trim-handle.right-handle {
+  @apply rounded-tl-none rounded-bl-none;
+}
+
+.trim-region {
+  @apply absolute top-0 h-full bg-red-500/40 pointer-events-none z-[1];
+}
+
+.trim-preview-container {
+  @apply fixed max-w-[240px] max-h-[160px] bg-surface border rounded overflow-hidden pointer-events-none z-[1000] shadow-lg flex items-center justify-center;
+  border-color: var(--border);
+}
+
+.trim-preview-video {
+  @apply w-auto h-auto max-w-full max-h-full bg-black;
+}

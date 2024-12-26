@@ -1,0 +1,58 @@
+.help-tip {
+  @apply fixed top-5 right-[25px] opacity-0 text-white px-4 py-3 rounded-lg text-sm -translate-y-[400%] z-[1000] pointer-events-none shadow-lg;
+  background: var(--accent);
+  transition: all 0.75s cubic-bezier(1,0,0,0);
+}
+
+.help-tip.show {
+  @apply translate-y-0 opacity-80;
+  transition: all 1s cubic-bezier(0.12, 0.90, 0.44, 1) 1s;
+}
+
+.help-tip:after {
+  content: 'Press H for help';
+  @apply flex items-center gap-2;
+}
+
+.tooltip { 
+  @apply relative;
+}
+
+.tooltip-content {
+  @apply absolute bottom-20 right-[-135px] bg-surface p-4 rounded-lg shadow-lg min-w-[280px] hidden z-10 border;
+  border-color: var(--border);
+}
+
+.tooltip.active .tooltip-content { 
+  @apply block;
+}
+
+.shortcut-categories {
+  @apply grid grid-cols-2 gap-4 min-w-[405px];
+}
+
+.shortcut-category {
+  @apply bg-[var(--bg)] p-3 rounded-md border;
+  border-color: var(--border);
+}
+
+.category-title {
+  @apply text-sm font-semibold mb-2 p-0 opacity-80;
+}
+
+.keybind-grid {
+  @apply grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-center;
+}
+
+.key {
+  @apply flex gap-1;
+}
+
+.key span {
+  @apply bg-surface px-1.5 py-0.5 rounded font-mono text-[0.85em] border min-w-5 text-center;
+  border-color: var(--border);
+}
+
+.description {
+  @apply text-sm opacity-90;
+}

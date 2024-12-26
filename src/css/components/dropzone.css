@@ -1,0 +1,15 @@
+.drop-zone {
+  @apply absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white border-3 border-dashed border-white rounded-xl opacity-0 pointer-events-none gap-3 m-3;
+}
+
+.no-video .drop-zone { 
+  @apply opacity-100 pointer-events-auto;
+}
+
+.drop-message { 
+  @apply text-2xl;
+}
+
+.drop-error { 
+  @apply text-red-400 text-base opacity-0 transition-opacity duration-300;
+}

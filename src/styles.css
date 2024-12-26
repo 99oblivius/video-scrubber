@@ -334,29 +334,28 @@ button:hover {
   -webkit-tap-highlight-color: transparent;  /* for mobile */
 }
 
-/* Pastel colors for each corner */
 .crop-handle.tl {
   top: -7px;
   left: -7px;
-  border-color: hsl(0, 70%, 80%);    /* Pastel red */
+  border-color: var(--text);
 }
 
 .crop-handle.tr {
   top: -7px;
   right: -7px;
-  border-color: hsl(120, 70%, 80%);  /* Pastel green */
+  border-color: var(--text);
 }
 
 .crop-handle.bl {
   bottom: -7px;
   left: -7px;
-  border-color: hsl(280, 70%, 80%); /* Pastel purple */
+  border-color: var(--text);
 }
 
 .crop-handle.br {
   bottom: -7px;
   right: -7px;
-  border-color: hsl(60, 70%, 80%);   /* Pastel yellow */
+  border-color: var(--text);
 }
 
 /* Hover effect */

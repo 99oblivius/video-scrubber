@@ -58,12 +58,25 @@ export const setupCrop = (video, settings) => {
         }
         width = width % 2 ? width - 1 : width;
         height = height % 2 ? height - 1 : height;
-        const x = Math.round((video.videoWidth - width) / 2);
-        const y = Math.round((video.videoHeight - height) / 2);
-        if (!preservePos) {
+        
+        if (!preservePos || (!state.relative.width && !state.relative.height)) {
             state.relative = { x: 0.5, y: 0.5, width: width / video.videoWidth, height: height / video.videoHeight };
         }
-        return { width, height, x: x % 2 ? x - 1 : x, y: y % 2 ? y - 1 : y };
+        
+        const centerX = Math.round(video.videoWidth * state.relative.x);
+        const centerY = Math.round(video.videoHeight * state.relative.y);
+        const x = Math.round(centerX - width / 2);
+        const y = Math.round(centerY - height / 2);
+        
+        const boundedX = Math.max(0, Math.min(video.videoWidth - width, x));
+        const boundedY = Math.max(0, Math.min(video.videoHeight - height, y));
+        
+        return { 
+            width, 
+            height, 
+            x: boundedX % 2 ? boundedX - 1 : boundedX, 
+            y: boundedY % 2 ? boundedY - 1 : boundedY 
+        };
     };
 
     const updateOverlay = () => {
@@ -184,6 +197,13 @@ export const setupCrop = (video, settings) => {
             settings.set('cropOrientation', newOr);
             flipBtn.textContent = newOr === 'vertical' ? '▯' : '▭';
             state.relative = { x: 0.5, y: 0.5, width: 0, height: 0 };
+            updateOverlay();
+        });
+
+        const centerBtn = $('#center-crop-button');
+        centerBtn.addEventListener('click', () => {
+            state.relative.x = 0.5;
+            state.relative.y = 0.5;
             updateOverlay();
         });
 

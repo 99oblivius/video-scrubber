@@ -1,14 +1,14 @@
-import { setupControls } from './controls.js';
-import { setupProgressBar } from './progress.js';
-import { setupDropZone } from './dropzone.js';
-import { setupMetadata } from './metadata.js';
-import { setupSettings } from './settings.js';
-import { setupHelpTip } from './help.js';
-
-import { setupTrim } from './trim.js';
-import { setupCrop } from './crop.js';
 import { setupCompress } from './compress.js';
+import { setupControls } from './controls.js';
+import { setupCrop } from './crop.js';
+import { setupDropZone } from './dropzone.js';
+import { setupHelpTip } from './help.js';
+import { setupMetadata } from './metadata.js';
+import { setupProgressBar } from './progress.js';
 import { setupSave } from './save.js';
+import { setupSettings } from './settings.js';
+import { setupTrim } from './trim.js';
+import { setupUrlLoader } from './url-loader.js';
 
 const printWelcomeMessage = () => {
     const styles = {
@@ -45,18 +45,19 @@ const player = (() => {
         const progress = setupProgressBar(v, metadata);
         const controls = setupControls(v, metadata, settings);
         const dropzone = setupDropZone(v, dc, metadata);
+        const urlLoader = setupUrlLoader(v, dc, metadata);
         const help = setupHelpTip(settings);
         const trim = setupTrim(v, metadata);
         const compress = setupCompress(v);
         const crop = setupCrop(v, settings);
         const save = setupSave(v);
 
-        // Initialize all modules
         settings.init();
         settings.apply();
         controls.init();
         progress.init();
         dropzone.init();
+        urlLoader.init();
         metadata.init();
         help.init();
         trim.init();

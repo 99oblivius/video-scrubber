@@ -112,6 +112,11 @@ export const setupSave = (video) => {
     };
 
     const getTrimChanges = () => {
+        const trimBtn = $('#trim-button');
+        if (!trimBtn?.classList.contains('active')) {
+            return null;
+        }
+        
         const trimStart = window.trimStart;
         const trimEnd = window.trimEnd;
         
@@ -220,10 +225,10 @@ export const setupSave = (video) => {
     const saveVideo = async (e) => {
         e?.preventDefault();
         e?.stopPropagation();
-        
+
         if (!currentFile) {
             await message('No video loaded', { title: 'Video Editor', kind: 'error' });
-            return;
+            return false;
         }
 
         try {
@@ -234,7 +239,7 @@ export const setupSave = (video) => {
             if (compatibleContainers.length === 0) {
                 await message('No compatible containers available for the selected codecs', 
                     { title: 'Video Editor', kind: 'error' });
-                return;
+                return false;
             }
 
             // Sort containers to prioritize current container if compatible
@@ -249,6 +254,7 @@ export const setupSave = (video) => {
             const defaultContainer = sortedContainers[0];
             const defaultPath = `${nameWithoutExt}.${defaultContainer}`;
 
+            // Always show the save dialog, for both local and remote
             const outputPath = await save({
                 defaultPath,
                 filters: [{
@@ -257,23 +263,50 @@ export const setupSave = (video) => {
                 }]
             });
 
-            if (!outputPath) return;
+            if (!outputPath) return false;
 
             const selectedContainer = outputPath.substring(outputPath.lastIndexOf('.') + 1).toLowerCase();
-            
+
             if (changes.compression) {
                 validateContainer(selectedContainer, compatibleContainers);
             }
 
-            const saveOperation = await prepareSaveOperation(outputPath, changes);
+            let saveOperation;
+            if (currentFile.isStream) {
+                saveOperation = {
+                    source: {
+                        path: currentFile.originalUrl,
+                        name: currentFile.name,
+                        is_stream: true,
+                        streaming_url: currentFile.streamingUrl,
+                        width: video.videoWidth,
+                        height: video.videoHeight,
+                        duration: video.duration
+                    },
+                    changes,
+                    output: {
+                        path: outputPath,
+                        container: selectedContainer
+                    }
+                };
+            } else {
+                // Local file
+                saveOperation = await prepareSaveOperation(outputPath, changes);
+            }
 
-            const saveStartMessage = changes.compression ? 'Compressing and saving...' : 'Saving...';
+            const saveStartMessage = changes.compression
+                ? 'Compressing and saving...'
+                : (currentFile.isStream ? 'Downloading and processing...' : 'Saving...');
             await message(saveStartMessage, { title: 'Video Editor' });
-            
-            await invoke('save_video', { operation: saveOperation });
+
+            if (currentFile.isStream) {
+                await invoke('process_remote_video', { operation: saveOperation });
+            } else {
+                await invoke('save_video', { operation: saveOperation });
+            }
 
             await message(`Save succeeded: ${outputPath}`, { title: 'Video Editor' });
-            
+
             // Clean up UI after successful save
             const compress = $('#compress');
             const crop = $('#crop');
@@ -304,6 +337,7 @@ export const setupSave = (video) => {
             return false;
         }
     };
+
 
     const updateContainerCompatibility = () => {
         const changes = gatherChanges();

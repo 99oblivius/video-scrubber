@@ -104,6 +104,13 @@ export const setupControls = (video, metadata, settings) => {
 
     const setupKeyboardShortcuts = () => {
         document.addEventListener('keydown', e => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                if (e.key === 'Escape') {
+                    e.target.blur();
+                }
+                return;
+            }
+
             if ((e.ctrlKey || e.metaKey) && e.key === 'p') e.preventDefault();
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             switch(e.code) {

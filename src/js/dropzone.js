@@ -5,6 +5,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
     const dropError = $('#dropError');
     const videoWrapper = $('.video-wrapper');
+    const clickableArea = $('.clickable-area');
 
     const showDropError = (message) => {
         dropError.textContent = message;
@@ -89,8 +90,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             e.stopPropagation();
         });
 
-        videoWrapper.addEventListener('click', async e => {
-            if (video.src) return;
+        clickableArea.addEventListener('click', async e => {
             await openVideoFile();
         });
 

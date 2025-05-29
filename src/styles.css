@@ -132,11 +132,64 @@ video::-webkit-media-controls {
   font-size: 1.5em; 
 }
 
-.drop-error { 
-  color: #ff6b6b; 
-  font-size: 1em; 
-  opacity: 0; 
-  transition: opacity 0.3s; 
+.clickable-area {
+    cursor: pointer;
+    padding: 15px 10px;
+    border-radius: 8px;
+    margin-bottom: -20px;
+    width: 80%;
+    max-width: 500px;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.url-input-container {
+    display: flex;
+    margin-top: 10px;
+    width: 80%;
+    max-width: 500px;
+    z-index: 10;
+}
+
+.url-input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px 0 0 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.url-button {
+    border-radius: 0 6px 6px 0;
+    padding: 8px 16px;
+    margin: 0;
+    height: auto;
+}
+
+.drop-error {
+    position: absolute;
+    bottom: 20px; /* Position from bottom of drop-zone */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 70, 70, 0.85);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    max-width: 80%;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none; /* So it doesn't interfere with clicks */
+    z-index: 100;
 }
 
 /* Progress Bar Styles */

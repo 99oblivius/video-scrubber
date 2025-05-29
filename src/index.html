@@ -15,7 +15,13 @@
             <div class="video-wrapper">
                 <video id="video"></video>
                 <div class="drop-zone">
-                    <div class="drop-message">Click here / Ctrl + O</div>
+                    <div class="clickable-area">
+                        <div class="drop-message">Click here</div>
+                    </div>
+                    <div class="url-input-container">
+                        <input type="text" id="videoUrlInput" placeholder="Or paste a video URL" class="url-input">
+                        <button id="loadUrlButton" class="url-button">Load</button>
+                    </div>
                     <div class="drop-error" id="dropError"></div>
                 </div>
                 <div class="volume-indicator" id="volumeIndicator">
@@ -48,7 +54,8 @@
                             <div class="compress-select-container">
                                 <label class="compress-label" for="quality-slider">Quality</label>
                                 <div class="slider-container">
-                                    <input type="range" id="quality-slider" class="compress-slider" min="0" max="100" value="75"/>
+                                    <input type="range" id="quality-slider" class="compress-slider" min="0" max="100"
+                                        value="75" />
                                     <span class="slider-value">75%</span>
                                 </div>
                             </div>
@@ -94,7 +101,7 @@
                 <button>Next Frame</button>
                 <button>+1s</button>
             </div>
-            
+
             <div class="time-display">
                 Time: <span id="timeDisplay">0.000s</span>
                 Frame: <span id="frameDisplay">0</span>

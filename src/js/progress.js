@@ -45,9 +45,31 @@ export const setupProgressBar = (video, metadata) => {
 
     const setProgress = (e) => {
         if (!video.duration) return;
+        
         const rect = progressContainer.getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
-        video.currentTime = video.duration * Math.max(0, Math.min(1, pos));
+        const targetTime = video.duration * Math.max(0, Math.min(1, pos));
+        
+        if (window.currentFile?.isStream) {
+            let loadingIndicator = $('#scrubbing-indicator');
+            if (!loadingIndicator) {
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'scrubbing-indicator';
+                loadingIndicator.className = 'scrubbing-indicator';
+                document.body.appendChild(loadingIndicator);
+            }
+            
+            loadingIndicator.style.display = 'block';
+            
+            const hideScrubbing = () => {
+                loadingIndicator.style.display = 'none';
+                video.removeEventListener('seeked', hideScrubbing);
+            };
+            
+            video.addEventListener('seeked', hideScrubbing);
+        }
+        
+        video.currentTime = targetTime;
     };
 
     const showHoverTime = (e) => {
@@ -123,6 +145,30 @@ export const setupProgressBar = (video, metadata) => {
                 startUpdates();
             }
         });
+
+        video.addEventListener('error', (e) => {
+        if (currentFile?.isStream) {
+            const errorCode = video.error ? video.error.code : 'unknown';
+            let errorMessage = 'Video playback error';
+            
+            switch (errorCode) {
+                case 2: // MEDIA_ERR_NETWORK
+                    errorMessage = 'Network error occurred while loading the video';
+                    break;
+                case 3: // MEDIA_ERR_DECODE
+                    errorMessage = 'Error decoding the video stream';
+                    break;
+                case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                    errorMessage = 'This video format is not supported';
+                    break;
+                default:
+                    errorMessage = `Video playback error (code: ${errorCode})`;
+            }
+            
+            showError(errorMessage);
+            console.error('Video error:', errorMessage, video.error);
+        }
+    });
         
         window.addEventListener('unload', stopUpdates);
         updateTimeDisplay();

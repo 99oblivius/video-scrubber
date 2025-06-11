@@ -5,6 +5,7 @@ export const setupMetadata = (video) => {
     let frameTime = 1/30;
     let detectedFPS = null;
     let probeData = null;
+    let streamData = null;
 
     const parseFrameRate = (rateStr) => {
         if (!rateStr) return null;
@@ -46,38 +47,128 @@ export const setupMetadata = (video) => {
         );
     };
 
-    const fetchProbeData = async (videoPath) => {
-        if (probeData) return probeData;
+    const printStreamData = (file) => {
+        const styles = {
+            header: 'color: #3B82F6; font-weight: bold; font-size: 13px;',
+            subheader: 'color: #3B82F6; font-weight: bold;',
+            label: 'color: #666;',
+            value: 'color: #444;',
+            url: 'color: #666;',
+            title: 'color: #3B82F6; font-weight: bold;'
+        };
+
+        const formatValue = (value) => value ?? 'N/A';
+
+        console.group(`%c${file.originalUrl}`, styles.url);
+        console.log(`%c${file.name}`, styles.title);
+        
+        console.group('%cVIDEO STREAM', styles.subheader);
+        console.group('%cFormat', styles.label);
+        console.log(`%cContainer: %c${formatValue(file.container)}`, styles.label, styles.value);
+        console.log(`%cCodec: %c${formatValue(file.vcodec)}`, styles.label, styles.value);
+        console.log(`%cResolution: %c${file.width && file.height ? `${file.width}×${file.height}` : 'N/A'}`, styles.label, styles.value);
+        console.log(`%cFPS: %c${formatValue(file.fps)}`, styles.label, styles.value);
+        console.log(`%cDuration: %c${file.duration ? formatDuration(file.duration) : 'N/A'}`, styles.label, styles.value);
+        console.groupEnd();
+
+        console.group('%cBitrate', styles.label);
+        if (file.tbr) console.log(`%cTotal: %c${formatValue(file.tbr)} kbps`, styles.label, styles.value);
+        if (file.vbr) console.log(`%cVideo: %c${formatValue(file.vbr)} kbps`, styles.label, styles.value);
+        if (file.abr) console.log(`%cAudio: %c${formatValue(file.abr)} kbps`, styles.label, styles.value);
+        console.groupEnd();
+
+        console.group('%cFile', styles.label);
+        console.log(`%cSize: %c${file.size ? formatFileSize(file.size) : 'N/A'}`, styles.label, styles.value);
+        console.log(`%cStreaming URL: %c${file.streamingUrl}`, styles.label, styles.value);
+        console.groupEnd();
+        console.groupEnd();
+
+        if (file.acodec) {
+            console.group('%cAUDIO STREAM', styles.subheader);
+            console.log(`%cCodec: %c${formatValue(file.acodec)}`, styles.label, styles.value);
+            if (file.abr) console.log(`%cBitrate: %c${formatValue(file.abr)} kbps`, styles.label, styles.value);
+            console.groupEnd();
+        }
+        
+        console.groupEnd();
+    };
+
+    const fetchProbeData = async (file) => {
+        if (probeData || streamData) return probeData || streamData;
         
         try {
-            probeData = await invoke('get_video_info', { path: videoPath });
-            printProbeData(probeData, videoPath);
+            if (file.isStream) {
+                streamData = {
+                    streams: [
+                        {
+                            codec_type: 'video',
+                            codec_name: file.vcodec,
+                            avg_frame_rate: file.fps ? `${file.fps}/1` : '30/1',
+                            r_frame_rate: file.fps ? `${file.fps}/1` : '30/1',
+                            bit_rate: file.vbr ? (file.vbr * 1000).toString() : null
+                        }
+                    ]
+                };
+                
+                if (file.acodec) {
+                    streamData.streams.push({
+                        codec_type: 'audio',
+                        codec_name: file.acodec,
+                        bit_rate: file.abr ? (file.abr * 1000).toString() : null
+                    });
+                }
+                
+                printStreamData(file);
+                
+                return streamData;
+            } else {
+                probeData = await invoke('get_video_info', { path: file.path });
+                printProbeData(probeData, file.path);
+            }
             return probeData;
         } catch (error) {
             console.error('Failed to fetch probe data:', error);
             probeData = null;
+            streamData = null;
             throw error;
         }
     };
 
     const getVideoCodec = () => {
+        if (streamData) {
+            const videoStream = streamData.streams.find(s => s.codec_type === 'video');
+            return videoStream?.codec_name || '?';
+        }
         const videoStream = getVideoStream();
         if (!videoStream) return '?';
-        let codecName = videoStream.codec_name;
-        return codecName;
+        return videoStream.codec_name;
     };
     
     const getAudioCodec = () => {
+        if (streamData) {
+            const audioStreams = streamData.streams.filter(s => s.codec_type === 'audio');
+            if (audioStreams.length === 0) return null;
+            const primaryStream = audioStreams[0];
+            return audioStreams.length > 1 ? `${primaryStream.codec_name}(${audioStreams.length})` : primaryStream.codec_name;
+        }
+        
         if (!probeData) return null;
         const audioStreams = getAudioStreams();
         if (audioStreams.length === 0) return null;
         
         const primaryStream = audioStreams[0];
-        let codecName = primaryStream.codec_name;
-        return audioStreams.length > 1 ? `${codecName}(${audioStreams.length})` : codecName;
+        return audioStreams.length > 1 ? `${primaryStream.codec_name}(${audioStreams.length})` : primaryStream.codec_name;
     };
 
     const detectFrameRate = () => {
+        if (streamData) {
+            const fps = streamData.streams[0]?.avg_frame_rate ? 
+                parseFrameRate(streamData.streams[0].avg_frame_rate) : 30;
+            detectedFPS = fps;
+            frameTime = 1 / fps;
+            return fps;
+        }
+        
         const videoStream = getVideoStream();
         if (!videoStream) {
             console.warn('No video stream found for frame rate detection');
@@ -105,11 +196,16 @@ export const setupMetadata = (video) => {
         if (!video.src) return;
 
         try {
-            await fetchProbeData(file.path);
+            await fetchProbeData(file);
             
             const fps = detectFrameRate();
             const videoCodec = getVideoCodec();
             const audioCodec = getAudioCodec();
+            
+            const duration = file.isStream ? (file.duration || video.duration || 0) : video.duration;
+            const width = file.isStream ? (file.width || video.videoWidth || 0) : video.videoWidth;
+            const height = file.isStream ? (file.height || video.videoHeight || 0) : video.videoHeight;
+            const size = file.size || 0;
             
             const timeDisplay = $('.time-display');
             
@@ -121,30 +217,30 @@ export const setupMetadata = (video) => {
                 <div class="metadata-group">
                     <div class="metadata-item">
                         <span class="metadata-label">⏱</span>
-                        <span id="durationDisplay">${formatDuration(video.duration)}</span>
+                        <span id="durationDisplay">${duration ? formatDuration(duration) : 'N/A'}</span>
                     </div>
                     <div class="metadata-item">
                         <span class="metadata-label">📐</span>
-                        <span id="resolutionDisplay">${video.videoWidth}×${video.videoHeight}</span>
+                        <span id="resolutionDisplay">${width && height ? `${width}×${height}` : 'N/A'}</span>
                     </div>
                     <div class="metadata-item">
                         <span class="metadata-label">💾</span>
-                        <span id="sizeDisplay">${formatFileSize(file.size)}</span>
+                        <span id="sizeDisplay">${size ? formatFileSize(size) : 'N/A'}</span>
                     </div>
                     <div class="metadata-item">
                         <span class="metadata-label">🎯</span>
-                        <span id="fpsDisplay">${1*fps.toFixed(3)} FPS</span>
+                        <span id="fpsDisplay">${fps ? `${(1*fps.toFixed(3))} FPS` : 'N/A'}</span>
                     </div>
                     <div class="metadata-item">
                         <span class="metadata-label">🎬</span>
-                        <span id="videoCodecDisplay">${videoCodec}</span>
+                        <span id="videoCodecDisplay">${videoCodec || 'N/A'}</span>
                     </div>`];
 
             if (audioCodec !== null) {
                 metadataItems.push(`
                     <div class="metadata-item">
                         <span class="metadata-label">🔊</span>
-                        <span id="audioCodecDisplay">${audioCodec}</span>
+                        <span id="audioCodecDisplay">${audioCodec || 'N/A'}</span>
                     </div>`);
             }
 
@@ -225,6 +321,7 @@ export const setupMetadata = (video) => {
 
     video.addEventListener('loadstart', () => {
         probeData = null;
+        streamData = null;
         detectedFPS = null;
         frameTime = 1/30;
     });

@@ -8,5 +8,10 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-http": "~2",
+    "hls.js": "^1.6.4",
+    "video.js": "^8.22.0"
   }
 }

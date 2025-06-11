@@ -1,3 +1,5 @@
+const { invoke } = window.__TAURI__.core;
+
 import { setupCompress } from './compress.js';
 import { setupControls } from './controls.js';
 import { setupCrop } from './crop.js';
@@ -43,8 +45,8 @@ const player = (() => {
         const metadata = setupMetadata(v);
 
         const progress = setupProgressBar(v, metadata);
-        const controls = setupControls(v, metadata, settings);
         const dropzone = setupDropZone(v, dc, metadata);
+        const controls = setupControls(v, metadata, settings, dropzone);
         const urlLoader = setupUrlLoader(v, dc, metadata);
         const help = setupHelpTip(settings);
         const trim = setupTrim(v, metadata);
@@ -74,4 +76,12 @@ const player = (() => {
 document.addEventListener('DOMContentLoaded', () => {
     printWelcomeMessage();
     player.init();
+    setTimeout(async () => { await invoke('show_app_window'); }, 50);
+    
+    setTimeout(() => {
+        const splash = document.getElementById('splash');
+        splash.style.opacity = '0';
+        
+        setTimeout(() => { splash.remove(); }, 350);
+    }, 400);
 });

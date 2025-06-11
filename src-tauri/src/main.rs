@@ -1,9 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::os::windows::process::CommandExt;
-use std::process::Command;
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use tauri::{AppHandle, Manager};
 
 // --------- Data Structures ---------
@@ -107,6 +107,22 @@ pub struct YtVideoInfo {
     formats: Option<Vec<Format>>,
     thumbnails: Option<Vec<Thumbnail>>,
     duration: Option<f64>,
+    width: Option<u32>,
+    height: Option<u32>,
+    fps: Option<f64>,
+    vcodec: Option<String>,
+    acodec: Option<String>,
+    ext: Option<String>,
+    video_ext: Option<String>,
+    audio_ext: Option<String>,
+    format: Option<String>,
+    format_id: Option<String>,
+    format_note: Option<String>,
+    tbr: Option<f64>,
+    vbr: Option<f64>,
+    abr: Option<f64>,
+    filesize: Option<u64>,
+    filesize_approx: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -128,7 +144,6 @@ pub struct Thumbnail {
 
 // --------- Utility Functions ---------
 
-/// Returns the path to a bundled binary (e.g., ffmpeg, yt-dlp) for the current platform.
 fn get_binary_path(app: &AppHandle, binary: &str) -> PathBuf {
     let bin_name = if cfg!(windows) {
         format!("{}.exe", binary)
@@ -138,6 +153,7 @@ fn get_binary_path(app: &AppHandle, binary: &str) -> PathBuf {
     app.path()
         .resource_dir()
         .expect("Failed to get resource dir")
+        .join("resources")
         .join("bin")
         .join(bin_name)
 }
@@ -212,21 +228,32 @@ async fn save_video(app: AppHandle, operation: SaveOperation) -> Result<(), Stri
 }
 
 #[tauri::command]
-async fn process_remote_video(app: AppHandle, operation: RemoteSaveOperation) -> Result<(), String> {
+async fn process_remote_video(
+    app: AppHandle,
+    operation: RemoteSaveOperation,
+) -> Result<(), String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let ffmpeg_path = get_binary_path(&app, "ffmpeg");
-    let output_ext = Path::new(&operation.output.path).extension().and_then(|e| e.to_str()).unwrap_or("mp4");
+    let output_ext = Path::new(&operation.output.path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("mp4");
     let source_url = operation.source.path;
     let temp_file = std::env::temp_dir().join(".vditmp.mp4");
     let temp_path = temp_file.to_string_lossy().to_string();
 
     let mut ytdlp_cmd = Command::new(&ytdlp_path);
     ytdlp_cmd.args([
-        "-f", "bv*+ba/best", 
-        "-o", &temp_path, 
-        "--merge-output-format", output_ext,
-        "--ffmpeg-location", &ffmpeg_path.to_string_lossy(), 
-        "--no-playlist"]);
+        "-f",
+        "bv*+ba/best",
+        "-o",
+        &temp_path,
+        "--merge-output-format",
+        output_ext,
+        "--ffmpeg-location",
+        &ffmpeg_path.to_string_lossy(),
+        "--no-playlist",
+    ]);
 
     if let Some(trim) = &operation.changes.trim {
         let format_time = |seconds: f64| -> String {
@@ -243,61 +270,86 @@ async fn process_remote_video(app: AppHandle, operation: RemoteSaveOperation) ->
     }
 
     ytdlp_cmd.arg(source_url);
-    let download_result = ytdlp_cmd.output()
+    let download_result = ytdlp_cmd
+        .output()
         .map_err(|e| format!("Failed to download with yt-dlp: {}", e))?;
     if !download_result.status.success() {
         return Err(String::from_utf8_lossy(&download_result.stderr).into_owned());
     }
-    
+
     let actual_width: u32;
     let actual_height: u32;
-    
+
     let probe_output = Command::new(get_binary_path(&app, "ffprobe"))
         .creation_flags(0x08000000)
         .args([
-            "-v", "quiet",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=s=x:p=0",
+            "-v",
+            "quiet",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=s=x:p=0",
             &temp_path,
         ])
         .output()
         .map_err(|e| format!("Failed to get video dimensions: {}", e))?;
-    
+
     if !probe_output.status.success() {
-        return Err(format!("FFprobe dimension query failed: {}", 
-            String::from_utf8_lossy(&probe_output.stderr)));
+        return Err(format!(
+            "FFprobe dimension query failed: {}",
+            String::from_utf8_lossy(&probe_output.stderr)
+        ));
     }
-    
-    let dimensions_str = String::from_utf8_lossy(&probe_output.stdout).trim().to_string();
+
+    let dimensions_str = String::from_utf8_lossy(&probe_output.stdout)
+        .trim()
+        .to_string();
     let dimensions: Vec<&str> = dimensions_str.split('x').collect();
-    
+
     if dimensions.len() != 2 {
-        return Err(format!("Could not parse video dimensions: {}", dimensions_str));
+        return Err(format!(
+            "Could not parse video dimensions: {}",
+            dimensions_str
+        ));
     }
-    
-    actual_width = dimensions[0].parse().map_err(|_| format!("Invalid width value: {}", dimensions[0]))?;
-    actual_height = dimensions[1].parse().map_err(|_| format!("Invalid height value: {}", dimensions[1]))?;
+
+    actual_width = dimensions[0]
+        .parse()
+        .map_err(|_| format!("Invalid width value: {}", dimensions[0]))?;
+    actual_height = dimensions[1]
+        .parse()
+        .map_err(|_| format!("Invalid height value: {}", dimensions[1]))?;
 
     let mut adjusted_changes = operation.changes;
     if let Some(ref mut crop) = adjusted_changes.crop {
         let source_width = operation.source.width;
         let source_height = operation.source.height;
-        
+
         if actual_width != source_width || actual_height != source_height {
             let width_scale = actual_width as f64 / source_width as f64;
             let height_scale = actual_height as f64 / source_height as f64;
-            
+
             crop.width = ((crop.width as f64 * width_scale).round() as u32).max(2);
             crop.height = ((crop.height as f64 * height_scale).round() as u32).max(2);
             crop.x = ((crop.x as f64 * width_scale).round() as u32).min(actual_width - crop.width);
-            crop.y = ((crop.y as f64 * height_scale).round() as u32).min(actual_height - crop.height);
-            
-            if crop.width % 2 != 0 { crop.width -= 1; }
-            if crop.height % 2 != 0 { crop.height -= 1; }
-            if crop.x % 2 != 0 { crop.x -= 1; }
-            if crop.y % 2 != 0 { crop.y -= 1; }
-            
+            crop.y =
+                ((crop.y as f64 * height_scale).round() as u32).min(actual_height - crop.height);
+
+            if crop.width % 2 != 0 {
+                crop.width -= 1;
+            }
+            if crop.height % 2 != 0 {
+                crop.height -= 1;
+            }
+            if crop.x % 2 != 0 {
+                crop.x -= 1;
+            }
+            if crop.y % 2 != 0 {
+                crop.y -= 1;
+            }
+
             if crop.x + crop.width > actual_width {
                 crop.x = actual_width - crop.width;
             }
@@ -328,7 +380,8 @@ async fn process_remote_video(app: AppHandle, operation: RemoteSaveOperation) ->
     };
 
     let mut ffmpeg_cmd = build_ffmpeg_command(&app, &postprocess_operation);
-    let ffmpeg_result = ffmpeg_cmd.output()
+    let ffmpeg_result = ffmpeg_cmd
+        .output()
         .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
     if !ffmpeg_result.status.success() {
         return Err(String::from_utf8_lossy(&ffmpeg_result.stderr).into_owned());
@@ -346,8 +399,10 @@ async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, S
     let output = Command::new(get_binary_path(&app, "ffprobe"))
         .creation_flags(0x08000000)
         .args([
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_streams",
             &path,
         ])
@@ -396,11 +451,12 @@ async fn get_best_streaming_url(
     if let Some(format) = format_preference {
         cmd.args(["-f", &format]);
     } else {
-        cmd.args(["-f", "best"]);
+        cmd.args(["-f", "b"]);
     }
 
     cmd.args(["--get-url", &url]);
-    let output = cmd.output()
+    let output = cmd
+        .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
     if !output.status.success() {
@@ -428,18 +484,29 @@ async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
     Ok(version)
 }
 
+#[tauri::command]
+fn show_app_window(window: tauri::Window) -> Result<(), String> {
+    window.show().unwrap();
+    window.set_focus().unwrap();
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             save_video,
             get_video_info,
             process_remote_video,
             get_yt_video_info,
             get_best_streaming_url,
-            check_ytdlp_version
+            check_ytdlp_version,
+            show_app_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

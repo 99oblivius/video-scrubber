@@ -257,6 +257,7 @@ export const setupCrop = (video, settings) => {
 
     const init = () => {
         setupUI();
+        
         cropBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!cropBtn.classList.contains('active')) {
@@ -264,7 +265,14 @@ export const setupCrop = (video, settings) => {
             }
             toggleCrop();
         });
+
         document.addEventListener('keypress', (e) => {
+            if (!video.src) return;
+
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
             if (e.code === 'KeyC' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 e.preventDefault();
                 if (!cropBtn.classList.contains('active')) {
@@ -273,6 +281,7 @@ export const setupCrop = (video, settings) => {
                 toggleCrop();
             }
         });
+
         video.addEventListener('loadedmetadata', reset);
         video.addEventListener('videoFileLoaded', reset);
         new ResizeObserver(() => {

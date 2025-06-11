@@ -200,10 +200,18 @@ export const setupTrim = (video, metadata) => {
     };
     
     const handleTrimKeyboard = (e) => {
+        if (!video.src) return;
+        
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
         if (e.code === 'KeyX' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
             toggleTrimMode();
             return;
         }
+
         if (!trimBtn.classList.contains('active')) return;
         
         const char = e.key;
@@ -212,6 +220,12 @@ export const setupTrim = (video, metadata) => {
             updateTrimRegion();
         } else if (char === ']') {
             trimEnd = video.currentTime;
+            updateTrimRegion();
+        } else if (char === '{') {
+            trimStart = 0.;
+            updateTrimRegion();
+        } else if (char === '}') {
+            trimEnd = video.duration;
             updateTrimRegion();
         }
     };

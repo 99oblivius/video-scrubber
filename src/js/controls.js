@@ -1,6 +1,6 @@
 const getCurrentWindow = window.__TAURI__.window.getCurrentWindow;
 
-export const setupControls = (video, metadata, settings) => {
+export const setupControls = (video, metadata, settings, dropzone) => {
     const $ = document.querySelector.bind(document);
     const loopBtn = $('#loopBtn');
     const themeBtn = $('#themeBtn');
@@ -32,6 +32,11 @@ export const setupControls = (video, metadata, settings) => {
         updateVolumeUI();
     };
 
+    const openMedia = () => {
+        if (video.src) {
+            dropContainer.classList.toggle('no-video');
+        }
+    }
     const togglePlayPause = () => video.paused ? video.play() : video.pause();
     const stepForward = () => {
         video.pause();
@@ -50,13 +55,13 @@ export const setupControls = (video, metadata, settings) => {
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', newTheme);
         settings.set('theme', newTheme);
-        themeBtn.textContent = newTheme === 'light' ? '🌙' : '☀️';
+        themeBtn.textContent = newTheme === 'light' ? '☀️' : '🌙';
     };
 
-    const toggleFullscreen = () => {
+    const toggleFullscreen = (onlyExit) => {
         const appWindow = getCurrentWindow();
         appWindow.isFullscreen().then((state) => {
-            if (state) {
+            if (state || onlyExit) {
                 document.exitFullscreen();
                 appWindow.setFullscreen(false);
             } else {
@@ -75,23 +80,30 @@ export const setupControls = (video, metadata, settings) => {
     const bindButtons = () => {
         const buttonRow = $('.button-row');
         const [
+            openMediaBtn,
             jumpBackBtn,
-            prevFrameBtn,
             playPauseBtn,
-            nextFrameBtn,
             jumpForwardBtn
         ] = buttonRow.children;
-
-        jumpBackBtn.onmousedown = jumpBackward;
-        prevFrameBtn.onmousedown = stepBackward;
-        playPauseBtn.onmousedown = togglePlayPause;
-        nextFrameBtn.onmousedown = stepForward;
-        jumpForwardBtn.onmousedown = jumpForward;
+        
+        openMediaBtn.addEventListener('mousedown', (e) => {
+            if (e.button === 0) openMedia();
+        });
+        jumpBackBtn.addEventListener('mousedown', (e) => {
+            if (e.button === 0) jumpBackward();
+        });
+        playPauseBtn.addEventListener('mousedown', (e) => {
+            if (e.button === 0) togglePlayPause();
+        });
+        jumpForwardBtn.addEventListener('mousedown', (e) => {
+            if (e.button === 0) jumpForward();
+        });
 
         const updatePlayPauseText = () => {
             playPauseBtn.textContent = video.paused ? '▶' : '❚❚';
         };
-        
+
+        openMediaBtn.addEventListener('dblclick', dropzone.openVideoFile);
         video.addEventListener('play', updatePlayPauseText);
         video.addEventListener('pause', updatePlayPauseText);
         updatePlayPauseText();
@@ -104,8 +116,13 @@ export const setupControls = (video, metadata, settings) => {
 
     const setupKeyboardShortcuts = () => {
         document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                openMedia();
+                return;
+            }
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                if (e.key === 'Escape') {
+                if (e.code === 'Escape') {
                     e.target.blur();
                 }
                 return;
@@ -136,9 +153,9 @@ export const setupControls = (video, metadata, settings) => {
                         jumpToPercent(Number(e.key) / 10);
                     }
                     return;
-                }
-                e.preventDefault();
-            });
+            }
+            e.preventDefault();
+        });
             
         video.addEventListener('dblclick', e => {
             if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -146,18 +163,41 @@ export const setupControls = (video, metadata, settings) => {
         });
     };
 
+    const setupFullscreenHandling = () => {
+        document.addEventListener('fullscreenchange', async () => {
+            const appWindow = getCurrentWindow();
+            const isFullscreen = !!document.fullscreenElement;
+            
+            await appWindow.setFullscreen(isFullscreen);
+        });
+
+        window.addEventListener('keydown', async (e) => {
+            if (e.key === 'Escape') {
+                const appWindow = getCurrentWindow();
+                const isFullscreen = await appWindow.isFullscreen();
+                
+                if (isFullscreen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    document.exitFullscreen();
+                    appWindow.setFullscreen(false);
+                }
+            }
+        }, true);
+    };
+
     const init = () => {
         video.addEventListener('click', togglePlayPause);
         loopBtn.addEventListener('click', toggleLoop);
         themeBtn.addEventListener('click', toggleTheme);
         setupKeyboardShortcuts();
+        setupFullscreenHandling();
 
         bindButtons();
         
         document.addEventListener('contextmenu', event => event.preventDefault());
         window.addEventListener('wheel', (e) => {
             if (e.ctrlKey) return;
-            
             if (e.target.closest('.time-display')) return;
             
             e.preventDefault();
@@ -168,8 +208,6 @@ export const setupControls = (video, metadata, settings) => {
     return {
         init,
         togglePlayPause,
-        stepForward,
-        stepBackward,
         jumpForward,
         jumpBackward
     };

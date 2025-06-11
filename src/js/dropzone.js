@@ -89,15 +89,16 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             e.preventDefault();
             e.stopPropagation();
         });
-
+        
         clickableArea.addEventListener('click', async e => {
             await openVideoFile();
         });
-
-        document.addEventListener('keydown', async (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-                e.preventDefault();
+        
+        clickableArea.addEventListener('keydown', async e => {
+            if (e.code === "Enter" || e.code === "Space") {
+                e.stopPropagation();
                 await openVideoFile();
+                clickableArea.blur();
             }
         });
     };

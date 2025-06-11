@@ -40,18 +40,15 @@ export const setupSettings = () => {
     const getSetting = (key) => currentSettings[key];
 
     const applySettings = () => {
-        // Apply theme
         document.documentElement.setAttribute('data-theme', currentSettings.theme);
         const themeBtn = $('#themeBtn');
-        if (themeBtn) themeBtn.textContent = currentSettings.theme === 'light' ? '🌙' : '☀️';
+        if (themeBtn) themeBtn.textContent = currentSettings.theme === 'light' ? '☀️' : '🌙';
 
-        // Apply loop
         const video = $('#video');
         const loopBtn = $('#loopBtn');
         if (video) video.loop = currentSettings.loop;
         if (loopBtn) loopBtn.classList.toggle('active', currentSettings.loop);
 
-        // Apply volume
         if (video) video.volume = currentSettings.volume;
     };
 

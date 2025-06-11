@@ -4,7 +4,6 @@ export const setupHelpTip = (settings) => {
     const helpBtn = $('#helpBtn');
     const helpTip = $('#helpTip');
 
-    // Keyboard shortcuts configuration
     const KEYBOARD_SHORTCUTS = {
         playback: {
             title: 'Playback',

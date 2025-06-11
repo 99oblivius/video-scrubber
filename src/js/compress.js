@@ -54,7 +54,6 @@ export const setupCompress = (video) => {
             return;
         }
 
-        // Close crop window if open
         const crop = $('#crop');
         if (crop?.classList.contains('active')) {
             crop.classList.remove('active');

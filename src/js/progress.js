@@ -147,7 +147,7 @@ export const setupProgressBar = (video, metadata) => {
         });
 
         video.addEventListener('error', (e) => {
-        if (currentFile?.isStream) {
+        if (window.currentFile?.isStream) {
             const errorCode = video.error ? video.error.code : 'unknown';
             let errorMessage = 'Video playback error';
             

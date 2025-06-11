@@ -383,9 +383,11 @@ const printProbeData = (data, path) => {
         }
 
         const additionalProps = Object.entries(stream)
-            .filter(([key]) => !['codec_type', 'codec_name', 'codec_long_name', 'profile', 'level', 
-                             'avg_frame_rate', 'r_frame_rate', 'nb_frames', 'channels', 
-                             'sample_rate', 'bit_rate'].includes(key))
+            .filter(([key]) => ![
+                'codec_type', 'codec_name', 'codec_long_name', 'profile', 'level', 
+                'avg_frame_rate', 'r_frame_rate', 'nb_frames', 'channels', 
+                'sample_rate', 'bit_rate'
+            ].includes(key))
             .filter(([_, value]) => value != null);
 
         if (additionalProps.length > 0) {

@@ -241,20 +241,17 @@ export const setupSave = (video) => {
                     { title: 'Video Editor', kind: 'error' });
                 return false;
             }
-
-            // Sort containers to prioritize current container if compatible
+            
             const sortedContainers = compatibleContainers.sort((a, b) => {
                 if (a === currentContainer) return -1;
                 if (b === currentContainer) return 1;
                 return 0;
             });
 
-            // Construct default output filename with preferred container
             const nameWithoutExt = currentFile.name.substring(0, currentFile.name.lastIndexOf('.'));
             const defaultContainer = sortedContainers[0];
             const defaultPath = `${nameWithoutExt}.${defaultContainer}`;
 
-            // Always show the save dialog, for both local and remote
             const outputPath = await save({
                 defaultPath,
                 filters: [{
@@ -290,7 +287,6 @@ export const setupSave = (video) => {
                     }
                 };
             } else {
-                // Local file
                 saveOperation = await prepareSaveOperation(outputPath, changes);
             }
 
@@ -307,7 +303,6 @@ export const setupSave = (video) => {
 
             await message(`Save succeeded: ${outputPath}`, { title: 'Video Editor' });
 
-            // Clean up UI after successful save
             const compress = $('#compress');
             const crop = $('#crop');
             const cropBtn = $('#crop-button');
@@ -343,7 +338,6 @@ export const setupSave = (video) => {
         const changes = gatherChanges();
         if (changes.compression) {
             if (!currentFile) {
-                // If no file is loaded yet, just show generally compatible containers
                 const { video_codec, audio_codec } = changes.compression;
                 const videoSupported = CODEC_CONTAINER_SUPPORT[video_codec] || CODEC_CONTAINER_SUPPORT['auto'];
                 const audioSupported = AUDIO_CONTAINER_SUPPORT[audio_codec] || AUDIO_CONTAINER_SUPPORT['auto'];
@@ -362,7 +356,6 @@ export const setupSave = (video) => {
     const init = () => {
         video.addEventListener('videoFileLoaded', (event) => {
             currentFile = event.detail.file;
-            // Check container compatibility whenever a new video is loaded
             updateContainerCompatibility();
         });
 
@@ -370,7 +363,6 @@ export const setupSave = (video) => {
         compressSaveBtn.addEventListener('click', saveVideo);
         compressSaveBtn.textContent = 'Save';
 
-        // Add keyboard shortcut for saving (Ctrl/Cmd + S)
         document.addEventListener('keydown', async (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
@@ -385,7 +377,6 @@ export const setupSave = (video) => {
             audioCodecSelect.addEventListener('change', updateContainerCompatibility);
         }
 
-        // Also check compatibility if compress panel is already active when file is loaded
         const compress = $('#compress');
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {

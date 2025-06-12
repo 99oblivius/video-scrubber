@@ -153,9 +153,9 @@ video::-webkit-media-controls {
   margin: 12px;
 }
 
-.no-video .drop-zone { 
+.add-media .drop-zone { 
   opacity: 1; 
-  pointer-events: all; 
+  pointer-events: all;
 }
 
 .drop-message {

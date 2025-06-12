@@ -52,7 +52,7 @@ export const setupControls = (video, metadata, settings, dropzone) => {
     };
 
     const openMedia = () => {
-        if (video.src) dropContainer.classList.toggle('no-video');
+        if (video.src) dropzone.setAddMedia();
     };
 
     const toggleTheme = () => {
@@ -94,7 +94,7 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         const updatePlayPauseText = () => { playPauseBtn.textContent = video.paused ? '▶' : '❚❚'; };
         
         let openMediaTimeout;
-        openMediaBtn.addEventListener('mousedown', (e) => {
+        openMediaBtn.addEventListener('click', (e) => {
             if (e.button === 0) {
                 clearTimeout(openMediaTimeout);
                 openMediaTimeout = setTimeout(() => openMedia(), 500);
@@ -105,9 +105,9 @@ export const setupControls = (video, metadata, settings, dropzone) => {
             dropzone.openVideoFile();
         });
         
-        jumpBackBtn.addEventListener('mousedown', (e) => { if (e.button === 0) jumpBackward(); });
-        playPauseBtn.addEventListener('mousedown', (e) => { if (e.button === 0) togglePlayPause(); });
-        jumpForwardBtn.addEventListener('mousedown', (e) => { if (e.button === 0) jumpForward(); });
+        jumpBackBtn.addEventListener('click', (e) => { if (e.button === 0) jumpBackward(); });
+        playPauseBtn.addEventListener('click', (e) => { if (e.button === 0) togglePlayPause(); });
+        jumpForwardBtn.addEventListener('click', (e) => { if (e.button === 0) jumpForward(); });
         
         video.addEventListener('play', updatePlayPauseText);
         video.addEventListener('pause', updatePlayPauseText);

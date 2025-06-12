@@ -1,6 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 
-export const setupUrlLoader = (video, dropContainer, metadata) => {
+export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
     const $ = document.querySelector.bind(document);
     const dropError = $('#dropError');
     const urlInput = $('#videoUrlInput');
@@ -101,7 +101,7 @@ export const setupUrlLoader = (video, dropContainer, metadata) => {
             } else {
                 video.src = streamingUrl;
                 video.focus();
-                dropContainer.classList.remove('no-video');
+                dropzone.setAddMedia(false);
                 
                 const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
                     detail: { file: virtualFile } 

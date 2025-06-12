@@ -3,6 +3,7 @@ const { convertFileSrc } = window.__TAURI__.core;
 
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
+    const dropZone = $(".drop-zone");
     const dropError = $('#dropError');
     const videoWrapper = $('.video-wrapper');
     const clickableArea = $('.clickable-area');
@@ -29,6 +30,18 @@ export const setupDropZone = (video, dropContainer, metadata) => {
         }
     };
 
+    const setAddMedia = (action) => {
+        const shouldAdd = (action == null) ? !dropContainer.classList.contains("add-media") : action;
+
+        if (shouldAdd) {
+            dropContainer.classList.add("add-media");
+            dropZone.inert = false;
+        } else {
+            dropContainer.classList.remove("add-media");
+            dropZone.inert = true;
+        }
+    };
+
     const loadVideo = async (path) => {
         try {
             const wasPlaying = !video.paused;
@@ -36,7 +49,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             const fileObject = await createFileObject(path);
             video.src = convertFileSrc(fileObject.path);
             video.focus();
-            dropContainer.classList.remove('no-video');
+            setAddMedia(false);
 
             const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
                 detail: { file: fileObject } 
@@ -57,7 +70,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             console.error('Failed to load video file:', error);
             showDropError('Failed to load video file');
             video.src = null;
-            dropContainer.classList.add('no-video');
+            dropContainer.classList.add('add-media');
         }
     };
 
@@ -80,6 +93,8 @@ export const setupDropZone = (video, dropContainer, metadata) => {
     };
 
     const init = () => {
+        dropZone.inert = !dropContainer.classList.contains("add-media");
+
         window.addEventListener('dragover', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -106,6 +121,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
     return {
         init,
         loadVideo,
-        openVideoFile
+        openVideoFile,
+        setAddMedia
     };
 };

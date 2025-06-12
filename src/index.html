@@ -17,17 +17,17 @@
         </div>
     </div>
     <div class="main-container">
-        <div class="video-container no-video" id="dropContainer">
+        <div class="video-container add-media" id="dropContainer">
             <div class="video-wrapper">
                 <video id="video" class="video-js" data-setup='{}'>
                 </video>
                 <div class="drop-zone">
-                    <div class="clickable-area" tabindex="0">
+                    <div tabindex="10" class="clickable-area">
                         <div class="drop-message">Click to Open</div>
                     </div>
                     <div class="url-input-container">
-                        <input type="text" id="videoUrlInput" placeholder="or paste a URL" class="url-input">
-                        <button id="loadUrlButton" class="url-button">Load</button>
+                        <input tabindex="20" type="text" id="videoUrlInput" placeholder="or paste a URL" class="url-input">
+                        <button tabindex="20" id="loadUrlButton" class="url-button">Load</button>
                     </div>
                     <div class="drop-error" id="dropError"></div>
                 </div>
@@ -52,39 +52,39 @@
                         <div class="compress-content">
                             <div class="compress-select-container">
                                 <label class="compress-label">Video Codec</label>
-                                <select class="compress-select" id="video-codec-select"></select>
+                                <select tabindex="91" class="compress-select" id="video-codec-select"></select>
                             </div>
                             <div class="compress-select-container">
                                 <label class="compress-label">Audio Codec</label>
-                                <select class="compress-select" id="audio-codec-select"></select>
+                                <select tabindex="91" class="compress-select" id="audio-codec-select"></select>
                             </div>
                             <div class="compress-select-container">
                                 <label class="compress-label" for="quality-slider">Quality</label>
                                 <div class="slider-container">
-                                    <input type="range" id="quality-slider" class="compress-slider" min="0" max="100"
+                                    <input tabindex="91" type="range" id="quality-slider" class="compress-slider" min="0" max="100"
                                         value="75" />
                                     <span class="slider-value">75%</span>
                                 </div>
                             </div>
-                            <button class="compress-save-button">Save</button>
+                            <button tabindex="91" class="compress-save-button">Save</button>
                         </div>
                     </div>
                     <div class="crop" id="crop">
                         <div class="crop-content">
                             <div class="crop-controls">
-                                <button class="editor-button" id="no-crop-button">✕</button>
-                                <select class="crop-select" id="ratio-select"></select>
-                                <button class="editor-button" id="center-crop-button">⊕</button>
-                                <button class="editor-button" id="flip-orientation-button"></button>
+                                <button tabindex="81" class="editor-button" id="no-crop-button">✕</button>
+                                <select tabindex="81" class="crop-select" id="ratio-select"></select>
+                                <button tabindex="81" class="editor-button" id="center-crop-button">⊕</button>
+                                <button tabindex="81" class="editor-button" id="flip-orientation-button"></button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <button class="editor-button" id="trim-button">✂️</button>
-                <button class="editor-button" id="crop-button">⌗</button>
-                <!-- <button class="editor-button">🔊</button> -->
-                <button class="editor-button" id="compress-button">🗜️</button>
-                <button class="editor-button" id="save-button">💾</button>
+                <button tabindex="70" class="editor-button" id="trim-button">✂️</button>
+                <button tabindex="80" class="editor-button" id="crop-button">⌗</button>
+                <!-- <button tabindex="3" class="editor-button">🔊</button> -->
+                <button tabindex="90" class="editor-button" id="compress-button">🗜️</button>
+                <button tabindex="100" class="editor-button" id="save-button">💾</button>
             </div>
             <div class="header">
                 <div class="fps-display" id="fpsDisplay"></div>
@@ -102,10 +102,10 @@
             </div>
 
             <div class="button-row">
-                <button class="editor-button">📁</button>
-                <button>-1s</button>
-                <button class="play-button">▶</button>
-                <button>+1s</button>
+                <button tabindex="30" class="editor-button">📁</button>
+                <button tabindex="40">-1s</button>
+                <button tabindex="50" class="play-button">▶</button>
+                <button tabindex="60">+1s</button>
             </div>
 
             <div class="time-display">

@@ -47,7 +47,7 @@ const player = (() => {
         const progress = setupProgressBar(v, metadata);
         const dropzone = setupDropZone(v, dc, metadata);
         const controls = setupControls(v, metadata, settings, dropzone);
-        const urlLoader = setupUrlLoader(v, dc, metadata);
+        const urlLoader = setupUrlLoader(v, dc, metadata, dropzone);
         const help = setupHelpTip(settings);
         const trim = setupTrim(v, metadata);
         const compress = setupCompress(v);

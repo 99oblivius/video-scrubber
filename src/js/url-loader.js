@@ -29,9 +29,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
         try {
             loadUrlButton.disabled = true;
             loadUrlButton.textContent = 'Loading...';
-            loadUrlButton.style.pointerEvents = 'none';
             urlInput.disabled = true;
-            dropError.style.opacity = '0';
             
             const streamingUrl = await invoke('get_best_streaming_url', { url, format_preference: 'b' });
             const videoInfo = await invoke('get_yt_video_info', { url });

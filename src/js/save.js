@@ -227,7 +227,7 @@ export const setupSave = (video) => {
         e?.stopPropagation();
 
         if (!currentFile) {
-            await message('No video loaded', { title: 'Video Editor', kind: 'error' });
+            window.showNotification("No video loaded", "error");
             return false;
         }
 
@@ -293,7 +293,7 @@ export const setupSave = (video) => {
             const saveStartMessage = changes.compression
                 ? 'Compressing and saving...'
                 : (currentFile.isStream ? 'Downloading and processing...' : 'Saving...');
-            await message(saveStartMessage, { title: 'Video Editor' });
+            window.showNotification(saveStartMessage, "info");
 
             if (currentFile.isStream) {
                 await invoke('process_remote_video', { operation: saveOperation });
@@ -301,7 +301,7 @@ export const setupSave = (video) => {
                 await invoke('save_video', { operation: saveOperation });
             }
 
-            await message(`Save succeeded: ${outputPath}`, { title: 'Video Editor' });
+            window.showNotification(`Save succeeded: ${outputPath}`, "success");
 
             const compress = $('#compress');
             const crop = $('#crop');
@@ -326,8 +326,7 @@ export const setupSave = (video) => {
                     kind: 'error' 
                 });
             } else {
-                await message('Save failed\nLook at the developer console for more information.', 
-                    { title: 'Video Editor', kind: 'error' });
+                window.showNotification("Save failed. See console for details.", "error");
             }
             return false;
         }

@@ -12,6 +12,27 @@ import { setupSettings } from './settings.js';
 import { setupTrim } from './trim.js';
 import { setupUrlLoader } from './url-loader.js';
 
+const showNotification = (message, type = "info", duration = 3000) => {
+    const notification = document.getElementById("global-notification");
+    if (!notification) return;
+
+    notification.textContent = message;
+    notification.className = "";
+    notification.classList.add(`type-${type}`);
+
+    notification.classList.remove("show");
+    void notification.offsetWidth;
+    notification.classList.add("show");
+
+    if (window.notificationTimeout) {
+        clearTimeout(window.notificationTimeout);
+    }
+
+    window.notificationTimeout = setTimeout(() => {
+        notification.classList.remove("show");
+    }, duration);
+};
+
 const printWelcomeMessage = () => {
     const styles = {
         title: 'font-family: monospace; font-size: 12px; font-weight: bold; color: #3B82F6;',
@@ -99,6 +120,8 @@ const player = (() => {
     const dc = $('#dropContainer');
     
     const init = () => {
+        window.showNotification = showNotification;
+        
         const settings = setupSettings();
         const metadata = setupMetadata(v);
 

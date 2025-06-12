@@ -8,12 +8,6 @@ export const setupDropZone = (video, dropContainer, metadata) => {
     const videoWrapper = $('.video-wrapper');
     const clickableArea = $('.clickable-area');
 
-    const showDropError = (message) => {
-        dropError.textContent = message;
-        dropError.style.opacity = '1';
-        setTimeout(() => dropError.style.opacity = '0', 3000);
-    };
-
     const createFileObject = async (path) => {
         try {
             const stats = await window.__TAURI__.fs.stat(path);
@@ -67,8 +61,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
                 }
             }, { once: true });
         } catch (error) {
-            console.error('Failed to load video file:', error);
-            showDropError('Failed to load video file');
+            window.showNotification("Failed to load video file", "error");
             video.src = null;
             dropContainer.classList.add('add-media');
         }
@@ -87,8 +80,7 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             if (selected === null) return;
             await loadVideo(selected);
         } catch (error) {
-            console.error('Error opening file:', error);
-            showDropError('Failed to open video file');
+            window.showNotification("Failed to open video file", "error");
         }
     };
 

@@ -6,12 +6,6 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
     const urlInput = $('#videoUrlInput');
     const loadUrlButton = $('#loadUrlButton');
     
-    const showError = (message) => {
-        dropError.textContent = message;
-        dropError.style.opacity = '1';
-        setTimeout(() => dropError.style.opacity = '0', 3000);
-    };
-    
     const normalizeCodec = (codec) => {
         if (!codec) return null;
         const c = codec.toLowerCase();
@@ -97,7 +91,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             };
             
             if (streamingUrl.includes('.m3u8')) {
-                showError('.m3u8 playlists not yet supported');
+                window.showNotification(".m3u8 playlists not yet supported", "error");
             } else {
                 video.src = streamingUrl;
                 video.focus();
@@ -119,8 +113,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             
             return true;
         } catch (error) {
-            console.error('Failed to load video from URL:', error);
-            showError('Failed to load video from URL');
+            window.showNotification("Failed to load video from URL", "error");
             return false;
         } finally {
             loadUrlButton.disabled = false;
@@ -185,22 +178,10 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             }
         });
 
-        // urlInputContainer.addEventListener('click', (e) => {
-        //     e.stopPropagation();
-        // });
-
-        // urlInputContainer.addEventListener('mousedown', (e) => {
-        //     e.stopPropagation();
-        // });
-
-        // urlInputContainer.addEventListener('touchstart', (e) => {
-        //     e.stopPropagation();
-        // });
-
         loadUrlButton.addEventListener('click', () => {
             const url = urlInput.value.trim();
             if (!url) {
-                showError('Please enter a valid URL');
+                window.showNotification("Please enter a valid URL", "error");
                 return;
             }
             loadVideoFromUrl(url);

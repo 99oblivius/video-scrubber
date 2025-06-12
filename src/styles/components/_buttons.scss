@@ -1,0 +1,56 @@
+button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 0.9em;
+    flex-shrink: 0;
+    height: 37px;
+    line-height: 1;
+    overflow: hidden;
+    white-space: nowrap;
+
+    &:hover {
+        background: var(--hover);
+    }
+}
+
+.icon-btn {
+    background: none;
+    color: var(--text);
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+        width: 20px;
+        height: 20px;
+        filter: var(--text-filter);
+    }
+
+    &:hover {
+        background: rgba(127, 127, 127, 0.2);
+    }
+
+    &.active img {
+        filter: var(--accent-filter);
+    }
+}
+
+.editor-button {
+    width: 50px;
+    overflow: hidden;
+    background: var(--secondary-accent);
+
+    &.active {
+        background: var(--accent);
+        color: white;
+    }
+}

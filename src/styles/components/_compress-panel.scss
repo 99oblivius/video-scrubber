@@ -1,0 +1,126 @@
+.compress {
+    position: relative;
+
+    &.active .compress-content {
+        display: block;
+    }
+}
+
+.compress-content {
+    position: absolute;
+    bottom: 80px;
+    right: auto;
+    left: -13px;
+    background: var(--surface);
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 4px 5px 15px rgba(0, 0, 0, 0.15);
+    width: 320px;
+    display: none;
+    z-index: 1000;
+    border: 1px solid var(--border);
+}
+
+.compress-select-container {
+    margin-bottom: 16px;
+}
+
+.compress-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text);
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.compress-select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: border-color 0.2s;
+
+    &:hover,
+    &:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.compress-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg);
+    outline: none;
+
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    &::-webkit-slider-thumb:hover {
+        background: var(--hover);
+    }
+}
+
+.slider-value {
+    min-width: 48px;
+    color: var(--text);
+    font-size: 0.9em;
+    font-family: ui-monospace, monospace;
+}
+
+.compress-save-button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s;
+
+    &:hover {
+        background: var(--hover);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.codec-container-warning {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    background: var(--secondary-accent);
+    font-size: 0.9em;
+    color: var(--text);
+}
+
+@media (min-width: 833px) {
+    .compress .compress-content {
+        right: -380px;
+        left: auto;
+    }
+}

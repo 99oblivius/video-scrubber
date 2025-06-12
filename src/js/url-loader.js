@@ -185,17 +185,17 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             }
         });
 
-        urlInputContainer.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        // urlInputContainer.addEventListener('click', (e) => {
+        //     e.stopPropagation();
+        // });
 
-        urlInputContainer.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-        });
+        // urlInputContainer.addEventListener('mousedown', (e) => {
+        //     e.stopPropagation();
+        // });
 
-        urlInputContainer.addEventListener('touchstart', (e) => {
-            e.stopPropagation();
-        });
+        // urlInputContainer.addEventListener('touchstart', (e) => {
+        //     e.stopPropagation();
+        // });
 
         loadUrlButton.addEventListener('click', () => {
             const url = urlInput.value.trim();

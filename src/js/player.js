@@ -35,6 +35,64 @@ const printWelcomeMessage = () => {
     console.info('%c\nHappy editing! 🎥✨\n', styles.subtitle);
 };
 
+const setupFocusTrap = () => {
+    const container = document.querySelector(".main-container");
+    if (!container) return;
+
+    const focusableSelector =
+        'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
+
+        const focusable = Array.from(
+            container.querySelectorAll(focusableSelector)
+        ).filter(
+            (el) =>
+                !!(
+                    el.offsetWidth ||
+                    el.offsetHeight ||
+                    el.getClientRects().length
+                )
+        );
+
+        const sortedFocusable = focusable.sort((a, b) => {
+            const tabA = parseInt(a.getAttribute("tabindex")) || 0;
+            const tabB = parseInt(b.getAttribute("tabindex")) || 0;
+            if (tabA > 0 && tabB > 0) return tabA - tabB;
+            if (tabA > 0) return -1;
+            if (tabB > 0) return 1;
+            return 0;
+        });
+
+        if (sortedFocusable.length === 0) return;
+
+        const firstElement = sortedFocusable[0];
+        const lastElement = sortedFocusable[sortedFocusable.length - 1];
+        const activeElement = document.activeElement;
+
+        const isFocusOutside = !sortedFocusable.includes(activeElement);
+
+        if (isFocusOutside) {
+            firstElement.focus();
+            e.preventDefault();
+            return;
+        }
+
+        if (e.shiftKey) {
+            if (activeElement === firstElement) {
+                lastElement.focus();
+                e.preventDefault();
+            }
+        } else {
+            if (activeElement === lastElement) {
+                firstElement.focus();
+                e.preventDefault();
+            }
+        }
+    });
+};
+
 const player = (() => {
     const $ = document.querySelector.bind(document);
     const v = $('#video');
@@ -66,6 +124,8 @@ const player = (() => {
         compress.init();
         crop.init();
         save.init();
+
+        setupFocusTrap();
 
         requestAnimationFrame(progress.updateTimeDisplay);
     };

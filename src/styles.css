@@ -725,7 +725,6 @@ button:hover {
   min-width: max-content;
   gap: 8px;
   margin-bottom: 11px;
-  overflow: hidden;
 }
 
 /* Time Display Styles */

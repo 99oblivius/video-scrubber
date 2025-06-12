@@ -4,10 +4,10 @@ export const setupControls = (video, metadata, settings, dropzone) => {
     const $ = document.querySelector.bind(document);
     const loopBtn = $('#loopBtn');
     const themeBtn = $('#themeBtn');
-    
     const volumeIndicator = $('#volumeIndicator');
     const volumeText = $('#volumeText');
     const volumeIcon = $('#volumeIcon');
+    
     let muteVolume = false;
     let volumeTimeout;
 
@@ -32,11 +32,6 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         updateVolumeUI();
     };
 
-    const openMedia = () => {
-        if (video.src) {
-            dropContainer.classList.toggle('no-video');
-        }
-    }
     const togglePlayPause = () => video.paused ? video.play() : video.pause();
     const stepForward = () => {
         video.pause();
@@ -46,9 +41,19 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         video.pause();
         video.currentTime = Math.max(0, (video.currentTime || 0) - metadata.getFrameTime());
     };
-    const jumpForward = () => {video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + 1);};
-    const jumpBackward = () => {video.currentTime = Math.max(0, (video.currentTime || 0) - 1);};
-    const jumpToPercent = p => { if (video.duration) video.currentTime = video.duration * p; };
+    const jumpForward = () => {
+        video.currentTime = Math.min(video.duration || 0, (video.currentTime || 0) + 1);
+    };
+    const jumpBackward = () => {
+        video.currentTime = Math.max(0, (video.currentTime || 0) - 1);
+    };
+    const jumpToPercent = p => {
+        if (video.duration) video.currentTime = video.duration * p;
+    };
+
+    const openMedia = () => {
+        if (video.src) dropContainer.classList.toggle('no-video');
+    };
 
     const toggleTheme = () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -56,6 +61,17 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         document.documentElement.setAttribute('data-theme', newTheme);
         settings.set('theme', newTheme);
         themeBtn.textContent = newTheme === 'light' ? '☀️' : '🌙';
+    };
+
+    const toggleLoop = () => {
+        video.loop = !video.loop;
+        loopBtn.classList.toggle('active');
+        settings.set('loop', video.loop);
+    };
+
+    const toggleTooltip = () => {
+        tooltip.classList.toggle('active');
+        helpBtn.classList.toggle('active');
     };
 
     const toggleFullscreen = (onlyExit) => {
@@ -71,47 +87,31 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         });
     };
 
-    const toggleLoop = () => {
-        video.loop = !video.loop;
-        loopBtn.classList.toggle('active');
-        settings.set('loop', video.loop);
-    };
-
     const bindButtons = () => {
         const buttonRow = $('.button-row');
-        const [
-            openMediaBtn,
-            jumpBackBtn,
-            playPauseBtn,
-            jumpForwardBtn
-        ] = buttonRow.children;
+        const [openMediaBtn, jumpBackBtn, playPauseBtn, jumpForwardBtn] = buttonRow.children;
         
+        const updatePlayPauseText = () => { playPauseBtn.textContent = video.paused ? '▶' : '❚❚'; };
+        
+        let openMediaTimeout;
         openMediaBtn.addEventListener('mousedown', (e) => {
-            if (e.button === 0) openMedia();
+            if (e.button === 0) {
+                clearTimeout(openMediaTimeout);
+                openMediaTimeout = setTimeout(() => openMedia(), 500);
+            }
         });
-        jumpBackBtn.addEventListener('mousedown', (e) => {
-            if (e.button === 0) jumpBackward();
+        openMediaBtn.addEventListener('dblclick', (e) => {
+            clearTimeout(openMediaTimeout);
+            dropzone.openVideoFile();
         });
-        playPauseBtn.addEventListener('mousedown', (e) => {
-            if (e.button === 0) togglePlayPause();
-        });
-        jumpForwardBtn.addEventListener('mousedown', (e) => {
-            if (e.button === 0) jumpForward();
-        });
-
-        const updatePlayPauseText = () => {
-            playPauseBtn.textContent = video.paused ? '▶' : '❚❚';
-        };
-
-        openMediaBtn.addEventListener('dblclick', dropzone.openVideoFile);
+        
+        jumpBackBtn.addEventListener('mousedown', (e) => { if (e.button === 0) jumpBackward(); });
+        playPauseBtn.addEventListener('mousedown', (e) => { if (e.button === 0) togglePlayPause(); });
+        jumpForwardBtn.addEventListener('mousedown', (e) => { if (e.button === 0) jumpForward(); });
+        
         video.addEventListener('play', updatePlayPauseText);
         video.addEventListener('pause', updatePlayPauseText);
         updatePlayPauseText();
-    };
-
-    const toggleTooltip = () => {
-        tooltip.classList.toggle('active');
-        helpBtn.classList.toggle('active');
     };
 
     const setupKeyboardShortcuts = () => {
@@ -121,15 +121,15 @@ export const setupControls = (video, metadata, settings, dropzone) => {
                 openMedia();
                 return;
             }
+            
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                if (e.code === 'Escape') {
-                    e.target.blur();
-                }
+                if (e.code === 'Escape') e.target.blur();
                 return;
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'p') e.preventDefault();
             if (e.ctrlKey || e.altKey || e.metaKey) return;
+            
             switch(e.code) {
                 case 'ArrowLeft': jumpBackward(); break;
                 case 'ArrowRight': jumpForward(); break;
@@ -141,6 +141,7 @@ export const setupControls = (video, metadata, settings, dropzone) => {
             }
             
             if (e.repeat) return;
+            
             switch(e.code) {
                 case 'Space': togglePlayPause(); break;
                 case 'KeyF': toggleFullscreen(); break;
@@ -149,14 +150,12 @@ export const setupControls = (video, metadata, settings, dropzone) => {
                 case 'KeyH': toggleTooltip(); break;
                 case 'KeyM': toggleMute(); break;
                 default:
-                    if (e.key >= '0' && e.key <= '9') {
-                        jumpToPercent(Number(e.key) / 10);
-                    }
+                    if (e.key >= '0' && e.key <= '9') jumpToPercent(Number(e.key) / 10);
                     return;
             }
             e.preventDefault();
         });
-            
+        
         video.addEventListener('dblclick', e => {
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             toggleFullscreen();
@@ -167,7 +166,6 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         document.addEventListener('fullscreenchange', async () => {
             const appWindow = getCurrentWindow();
             const isFullscreen = !!document.fullscreenElement;
-            
             await appWindow.setFullscreen(isFullscreen);
         });
 
@@ -175,7 +173,6 @@ export const setupControls = (video, metadata, settings, dropzone) => {
             if (e.key === 'Escape') {
                 const appWindow = getCurrentWindow();
                 const isFullscreen = await appWindow.isFullscreen();
-                
                 if (isFullscreen) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -190,25 +187,18 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         video.addEventListener('click', togglePlayPause);
         loopBtn.addEventListener('click', toggleLoop);
         themeBtn.addEventListener('click', toggleTheme);
-        setupKeyboardShortcuts();
-        setupFullscreenHandling();
-
-        bindButtons();
-        
         document.addEventListener('contextmenu', event => event.preventDefault());
         window.addEventListener('wheel', (e) => {
             if (e.ctrlKey) return;
             if (e.target.closest('.time-display')) return;
-            
             e.preventDefault();
             changeVolume(e.deltaY > 0 ? -0.05 : 0.05);
         }, { passive: false });
+        
+        bindButtons();
+        setupKeyboardShortcuts();
+        setupFullscreenHandling();
     };
 
-    return {
-        init,
-        togglePlayPause,
-        jumpForward,
-        jumpBackward
-    };
+    return { init, togglePlayPause, jumpForward, jumpBackward };
 };

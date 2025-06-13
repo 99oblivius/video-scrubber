@@ -71,10 +71,7 @@ pub fn update_queue_progress(queue_id: &str, progress: &QueueProgress) {
 }
 
 pub fn get_all_queue_items() -> Vec<QueueItemInfo> {
-    PROCESSES
-        .lock()
-        .unwrap()
-        .values()
+    PROCESSES.lock().unwrap().values()
         .map(|info| info.queue_info.lock().unwrap().clone())
         .collect()
 }
@@ -106,8 +103,7 @@ pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
     Command::new("taskkill")
         .args(["/F", "/T", "/PID", &pid.to_string()])
         .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+        .output().map_err(|e| format!("Failed to terminate process tree: {}", e))?;
     Ok(())
 }
 
@@ -117,8 +113,7 @@ pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
 
     Command::new("pkill")
         .args(["-TERM", "-P", &pid.to_string()])
-        .output()
-        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+        .output().map_err(|e| format!("Failed to terminate process tree: {}", e))?;
     Ok(())
 }
 

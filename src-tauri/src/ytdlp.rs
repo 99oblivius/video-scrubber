@@ -47,36 +47,20 @@ pub fn build_ytdlp_command(
     url: &str,
     output_path: &str,
     ext: &str,
-    trim: Option<&crate::models::TrimSettings>,
 ) -> Command {
     let ytdlp_path = get_binary_path(app, "yt-dlp");
     let ffmpeg_path = get_binary_path(app, "ffmpeg");
 
     let mut cmd = Command::new(&ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
         .args([
-            "-f",
-            "bv*+ba/best",
-            "-o",
-            output_path,
-            "--ffmpeg-location",
-            &ffmpeg_path.to_string_lossy(),
-            "--remux-video",
-            ext,
-            "--no-playlist",
-            "--progress",
-            "--newline",
+            "-f", "bv*+ba/best",
+            "-o", output_path,
+            "--ffmpeg-location", &ffmpeg_path.to_string_lossy(),
+            "--remux-video", ext,
+            "--no-playlist", "--progress", "--newline",
         ]);
-
-    if let Some(trim) = trim {
-        let start_time = crate::utils::format_time(trim.start_time);
-        let end_time = crate::utils::format_time(trim.end_time);
-        let sections = format!("*{}-{}", start_time, end_time);
-        cmd.args(["--download-sections", &sections]);
-    }
 
     cmd.arg(url);
     cmd

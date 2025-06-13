@@ -69,10 +69,8 @@ pub async fn save_video(
 
     let temp_dir = ensure_temp_dir()?;
 
-    let output_ext = Path::new(&operation.output.path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("mp4");
+    let output_ext = Path::new(&operation.output.path).extension()
+        .and_then(|e| e.to_str()).unwrap();
     let temp_file = temp_dir.join(format!("{}.{}", queue_id, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
@@ -88,8 +86,7 @@ pub async fn save_video(
     };
 
     let mut cmd = build_ffmpeg_command(&app, &temp_operation);
-    let mut child = cmd
-        .spawn()
+    let mut child = cmd.spawn()
         .map_err(|e| format!("FFmpeg error: {}", e))?;
     let stdout = child
         .stdout
@@ -105,7 +102,13 @@ pub async fn save_video(
     let child_arc = register_process(queue_id.clone(), child, true, output_filename);
 
     let reader = BufReader::new(stdout);
-    monitor_ffmpeg_progress(reader, queue_id.clone(), app.clone(), total_duration);
+    monitor_ffmpeg_progress(
+        reader, 
+        queue_id.clone(), 
+        app.clone(), 
+        total_duration,
+        operation.changes.trim.clone(),
+    );
 
     let exit_status = wait_for_process(child_arc).await?;
 
@@ -133,10 +136,8 @@ pub async fn process_remote_video(
 
     let temp_dir = ensure_temp_dir()?;
 
-    let output_ext = Path::new(&operation.output.path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("mp4");
+    let output_ext = Path::new(&operation.output.path).extension()
+        .and_then(|e| e.to_str()).unwrap_or("mp4");
     let temp_file = temp_dir.join(format!("{}.{}", queue_id, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
@@ -146,19 +147,14 @@ pub async fn process_remote_video(
         &operation.source.path,
         &temp_path,
         output_ext,
-        operation.changes.trim.as_ref(),
     );
 
-    let mut child = ytdlp_cmd
-        .spawn()
+    let mut child = ytdlp_cmd.spawn()
         .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
 
-    let output_filename = Path::new(&operation.output.path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
+    let output_filename = Path::new(&operation.output.path).file_name()
+        .and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
 
     let child_arc = register_process(queue_id.clone(), child, false, output_filename);
 
@@ -194,7 +190,6 @@ pub async fn process_remote_video(
         return Ok(());
     }
 
-    // Post-process with FFmpeg
     let postprocess_operation = SaveOperation {
         source: SourceInfo {
             path: temp_path.clone(),
@@ -219,25 +214,25 @@ async fn process_with_ffmpeg(
 ) -> Result<(), String> {
     let total_duration = operation.source.duration;
 
-    let output_filename = Path::new(&operation.output.path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
+    let output_filename = Path::new(&operation.output.path).file_name()
+        .and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
 
     let mut cmd = build_ffmpeg_command(&app, &operation);
-    let mut child = cmd
-        .spawn()
+    let mut child = cmd.spawn()
         .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or("Failed to capture stderr")?;
+    let stdout = child.stdout.take()
+        .ok_or("Failed to capture stdout")?;
 
     let child_arc = register_process(queue_id.clone(), child, true, output_filename);
 
-    let reader = BufReader::new(stderr);
-    monitor_ffmpeg_progress(reader, queue_id.clone(), app.clone(), total_duration);
+    let reader = BufReader::new(stdout);
+    monitor_ffmpeg_progress(
+        reader, 
+        queue_id.clone(), 
+        app.clone(), 
+        total_duration,
+        operation.changes.trim.clone(),
+    );
 
     let exit_status = wait_for_process(child_arc).await?;
     unregister_process(&queue_id);
@@ -253,18 +248,13 @@ fn get_video_dimensions(app: &AppHandle, path: &str) -> Result<(u32, u32), Strin
     let output = Command::new(get_binary_path(app, "ffprobe"))
         .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .args([
-            "-v",
-            "quiet",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            "stream=width,height",
-            "-of",
-            "csv=s=x:p=0",
+            "-v", "quiet",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=s=x:p=0",
             path,
         ])
-        .output()
-        .map_err(|e| format!("Failed to get video dimensions: {}", e))?;
+        .output().map_err(|e| format!("Failed to get video dimensions: {}", e))?;
 
     if !output.status.success() {
         return Err("FFprobe dimension query failed".to_string());
@@ -311,19 +301,14 @@ fn adjust_crop_settings(
 pub async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, String> {
     let output = Command::new(get_binary_path(&app, "ffprobe"))
         .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
         .args([
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
+            "-v", "quiet",
+            "-print_format", "json",
             "-show_streams",
             &path,
         ])
-        .output()
-        .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
+        .output().map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
 
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).into_owned());

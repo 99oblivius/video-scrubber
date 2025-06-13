@@ -3,7 +3,7 @@ export const setupProgressBar = (video, metadata) => {
     const progressFill = $('#progressFill');
     const progressHandle = $('#progressHandle');
     const progressContainer = $('#progressContainer');
-    const progressHoverTime = $('#progressHoverTime');
+    const progressHover = $('#progressHover');
     let updateInterval = null;
 
     const updateProgress = () => {
@@ -79,18 +79,25 @@ export const setupProgressBar = (video, metadata) => {
         const time = video.duration * Math.max(0, Math.min(1, pos));
         const frame = Math.floor(time / metadata.getFrameTime());
 
-        progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
-        progressHoverTime.style.opacity = '1';
+        let timeTextElement = progressHover.querySelector('#progressHoverTime');
+        if (!timeTextElement) {
+            timeTextElement = document.createElement('span');
+            timeTextElement.id = 'progressHoverTime';
+            progressHover.appendChild(timeTextElement);
+        }
 
-        const tooltipWidth = progressHoverTime.offsetWidth;
+        timeTextElement.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
+        progressHover.style.opacity = '1';
+
+        const tooltipWidth = progressHover.offsetWidth;
         
         let x = e.clientX;
         const minX = tooltipWidth / 2;
         const maxX = window.innerWidth - tooltipWidth / 2;
         x = Math.max(minX, Math.min(maxX, x));
         
-        progressHoverTime.style.left = `${x}px`;
-        progressHoverTime.style.top = `${rect.y - 35}px`;
+        progressHover.style.left = `${x}px`;
+        progressHover.style.top = `${rect.y - 35}px`;
     };
 
     const init = () => {
@@ -102,7 +109,7 @@ export const setupProgressBar = (video, metadata) => {
 
         progressContainer.addEventListener('mouseleave', (e) => {
             if (e.buttons === 0) {
-                progressHoverTime.style.opacity = '0';
+                progressHover.style.opacity = '0';
             }
         });
 
@@ -119,7 +126,7 @@ export const setupProgressBar = (video, metadata) => {
             const handleDragEnd = () => {
                 document.removeEventListener('mousemove', handleDrag);
                 document.removeEventListener('mouseup', handleDragEnd);
-                progressHoverTime.style.opacity = '0';
+                progressHover.style.opacity = '0';
             };
 
             document.addEventListener('mousemove', handleDrag);

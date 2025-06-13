@@ -115,10 +115,24 @@ export const setupControls = (video, metadata, settings, dropzone) => {
     };
 
     const setupKeyboardShortcuts = () => {
+        let openMediaTimeout;
+        let lastCtrlOTime = 0;
+
         document.addEventListener('keydown', e => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
                 e.preventDefault();
-                openMedia();
+                
+                const currentTime = Date.now();
+                const timeSinceLastCtrlO = currentTime - lastCtrlOTime;
+                lastCtrlOTime = currentTime;
+                
+                if (timeSinceLastCtrlO < 500) {
+                    clearTimeout(openMediaTimeout);
+                    dropzone.openVideoFile();
+                } else {
+                    clearTimeout(openMediaTimeout);
+                    openMediaTimeout = setTimeout(() => openMedia(), 500);
+                }
                 return;
             }
             

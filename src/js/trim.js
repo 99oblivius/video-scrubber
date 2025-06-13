@@ -3,28 +3,11 @@ export const setupTrim = (video, metadata) => {
     const trimBtn = $('#trim-button');
     const progressContainer = $('#progressContainer');
     const progressBar = $('.progress-bar');
+    const progressHover = $('#progressHover');
     
     let trimStart = 0;
     let trimEnd = video.duration || 0;
     let animationFrameId = null;
-    
-    const createPreviewVideo = () => {
-        const previewContainer = document.createElement('div');
-        previewContainer.className = 'trim-preview-container';
-        previewContainer.style.display = 'none';
-        
-        const previewVideo = document.createElement('video');
-        previewVideo.className = 'trim-preview-video';
-        previewVideo.src = video.src;
-        previewVideo.muted = true;
-        
-        previewContainer.appendChild(previewVideo);
-        document.body.appendChild(previewContainer);
-        
-        return { previewContainer, previewVideo };
-    };
-    
-    const { previewContainer, previewVideo } = createPreviewVideo();
     
     const createTrimHandles = () => {
         const leftHandle = document.createElement('div');
@@ -47,13 +30,12 @@ export const setupTrim = (video, metadata) => {
     };
     
     const { leftHandle, rightHandle, trimRegion } = createTrimHandles();
-    const progressHoverTime = $('#progressHoverTime');
     
-    const updateProgressHoverTime = (time, x) => {
+    const updateProgressHover = (time, x) => {
         const frame = Math.floor(time / metadata.getFrameTime());
-        progressHoverTime.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
-        progressHoverTime.style.left = `${x}px`;
-        progressHoverTime.style.opacity = '1';
+        progressHover.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
+        progressHover.style.left = `${x}px`;
+        progressHover.style.opacity = '1';
     };
     
     const updateTrimRegion = () => {
@@ -70,36 +52,6 @@ export const setupTrim = (video, metadata) => {
         window.trimEnd = trimEnd;
     };
     
-    const updatePreviewSize = () => {
-        if (!video.videoWidth || !video.videoHeight) return;
-        
-        const MAX_WIDTH = 240;
-        const MAX_HEIGHT = 160;
-        
-        const scaleX = MAX_WIDTH / video.videoWidth;
-        const scaleY = MAX_HEIGHT / video.videoHeight;
-        const scale = Math.min(scaleX, scaleY);
-        
-        const width = Math.round(video.videoWidth * scale);
-        const height = Math.round(video.videoHeight * scale);
-        
-        previewContainer.style.width = width + 'px';
-        previewContainer.style.height = height + 'px';
-    };
-
-    const updatePreviewPosition = (e) => {
-        const rect = progressBar.getBoundingClientRect();
-        const previewRect = previewContainer.getBoundingClientRect();
-        
-        let x = e.clientX - previewRect.width / 2;
-        let y = rect.top - previewRect.height - 10;
-        
-        x = Math.max(0, Math.min(x, window.innerWidth - previewRect.width));
-        y = Math.max(0, Math.min(y, window.innerHeight - previewRect.height));
-        
-        previewContainer.style.transform = `translate(${x}px, ${y}px)`;
-    };
-    
     const setupHandleDrag = (handle, isLeft) => {
         let isDragging = false;
         
@@ -107,9 +59,11 @@ export const setupTrim = (video, metadata) => {
             isDragging = true;
             e.stopPropagation();
             
-            updatePreviewSize();
-            previewContainer.style.display = 'block';
-            previewVideo.currentTime = isLeft ? trimStart : trimEnd;
+            // Create preview video element once
+            const previewVideo = document.createElement('video');
+            previewVideo.className = 'trim-preview-video';
+            previewVideo.src = video.src;
+            previewVideo.muted = true;
             
             const handleDrag = async (e) => {
                 if (!isDragging) return;
@@ -124,29 +78,44 @@ export const setupTrim = (video, metadata) => {
                 
                 if (isLeft) {
                     trimStart = Math.min(snappedTime, trimEnd - frameTime);
-                    previewVideo.currentTime = trimStart;
                 } else {
                     trimEnd = Math.max(snappedTime, trimStart + frameTime);
-                    previewVideo.currentTime = trimEnd;
                 }
                 
                 updateTrimRegion();
-                updateProgressHoverTime(isLeft ? trimStart : trimEnd, e.clientX);
-                updatePreviewPosition(e);
+                
+                // Update hover display with preview
+                progressHover.innerHTML = '';
+                progressHover.appendChild(previewVideo);
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.id = 'progressHoverTime';
+                timeSpan.textContent = `${snappedTime.toFixed(3)}s (Frame ${frameNumber})`;
+                progressHover.appendChild(timeSpan);
+                
+                previewVideo.currentTime = snappedTime;
+                
+                progressHover.style.opacity = '1';
+                const tooltipWidth = progressHover.offsetWidth;
+                let x = e.clientX;
+                const minX = tooltipWidth / 2;
+                const maxX = window.innerWidth - tooltipWidth / 2;
+                x = Math.max(minX, Math.min(maxX, x));
+                
+                progressHover.style.left = `${x}px`;
+                progressHover.style.top = `${rect.y - (previewVideo ? 190 : 35)}px`;
             };
             
             const stopDrag = () => {
                 isDragging = false;
-                previewContainer.style.display = 'none';
-                progressHoverTime.style.opacity = '0';
+                progressHover.style.opacity = '0';
+                progressHover.innerHTML = '';
                 document.removeEventListener('mousemove', handleDrag);
                 document.removeEventListener('mouseup', stopDrag);
             };
             
             document.addEventListener('mousemove', handleDrag);
             document.addEventListener('mouseup', stopDrag);
-            
-            updatePreviewPosition(e);
         });
     };
     
@@ -251,7 +220,6 @@ export const setupTrim = (video, metadata) => {
             window.trimEnd = undefined;
             
             previewVideo.src = video.src;
-            previewVideo.addEventListener('loadedmetadata', updatePreviewSize, { once: true });
             
             if (trimBtn.classList.contains('active')) {
                 updateTrimRegion();
@@ -261,7 +229,7 @@ export const setupTrim = (video, metadata) => {
         window.addEventListener('unload', () => {
             stopTimeChecking();
             document.removeEventListener('keypress', handleTrimKeyboard);
-            previewContainer.remove();
+            previewVideo.remove();
         });
     };
     

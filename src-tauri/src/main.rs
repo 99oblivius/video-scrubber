@@ -10,9 +10,15 @@ mod ytdlp;
 
 use process::terminate_all_processes;
 use temp::ensure_temp_dir;
+use tauri::WindowEvent;
 
 fn main() {
     tauri::Builder::default()
+        .on_window_event(|_window, event| {
+            if let WindowEvent::Resized(_) | WindowEvent::Moved(_) = event {
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        })
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

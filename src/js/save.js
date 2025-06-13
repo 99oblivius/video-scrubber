@@ -1,5 +1,6 @@
 const { message, save } = window.__TAURI__.dialog;
 const { invoke } = window.__TAURI__.core;
+import { setupQueue } from './queue.js';
 
 export const setupSave = (video) => {
     const $ = document.querySelector.bind(document);
@@ -7,6 +8,7 @@ export const setupSave = (video) => {
     const compressBtn = $('#compress-button');
     const compressSaveBtn = $('.compress-save-button');
     let currentFile = null;
+    let queue = null;
 
     const CODEC_QUALITY_PRESETS = {
         'h264': {
@@ -268,6 +270,10 @@ export const setupSave = (video) => {
                 validateContainer(selectedContainer, compatibleContainers);
             }
 
+            const queueId = crypto.randomUUID();
+            const outputFileName = outputPath.split(/[/\\]/).pop();
+            queue.addToQueue(queueId, outputFileName);
+
             let saveOperation;
             if (currentFile.isStream) {
                 saveOperation = {
@@ -290,35 +296,36 @@ export const setupSave = (video) => {
                 saveOperation = await prepareSaveOperation(outputPath, changes);
             }
 
-            const saveStartMessage = changes.compression
-                ? 'Compressing and saving...'
-                : (currentFile.isStream ? 'Downloading and processing...' : 'Saving...');
-            window.showNotification(saveStartMessage, "info");
+            try {
+                if (currentFile.isStream) {
+                    await invoke('process_remote_video', { operation: saveOperation, queueId });
+                } else {
+                    await invoke('save_video', { operation: saveOperation, queueId });
+                }
 
-            if (currentFile.isStream) {
-                await invoke('process_remote_video', { operation: saveOperation });
-            } else {
-                await invoke('save_video', { operation: saveOperation });
+                queue.completeQueueItem(queueId, true);
+                window.showNotification(`Save succeeded: ${outputPath}`, "success");
+
+                const compress = $('#compress');
+                const crop = $('#crop');
+                const cropBtn = $('#crop-button');
+
+                if (compress?.classList.contains('active')) {
+                    compress.classList.remove('active');
+                    compressBtn.classList.remove('active');
+                }
+
+                if (crop?.classList.contains('active')) {
+                    crop.classList.remove('active');
+                    cropBtn.classList.remove('active');
+                    $('.crop-overlay').style.display = 'none';
+                }
+
+                return true;
+            } catch (error) {
+                queue.completeQueueItem(queueId, false);
+                throw error;
             }
-
-            window.showNotification(`Save succeeded: ${outputPath}`, "success");
-
-            const compress = $('#compress');
-            const crop = $('#crop');
-            const cropBtn = $('#crop-button');
-
-            if (compress?.classList.contains('active')) {
-                compress.classList.remove('active');
-                compressBtn.classList.remove('active');
-            }
-
-            if (crop?.classList.contains('active')) {
-                crop.classList.remove('active');
-                cropBtn.classList.remove('active');
-                $('.crop-overlay').style.display = 'none';
-            }
-
-            return true;
         } catch (error) {
             if (error.message && error.message.includes('container format')) {
                 await message(error.message, { 
@@ -326,12 +333,11 @@ export const setupSave = (video) => {
                     kind: 'error' 
                 });
             } else {
-                window.showNotification("Save failed. See console for details.", "error");
+                window.showNotification("Save failed: " + error, "error");
             }
             return false;
         }
     };
-
 
     const updateContainerCompatibility = () => {
         const changes = gatherChanges();
@@ -353,6 +359,9 @@ export const setupSave = (video) => {
     };
 
     const init = () => {
+        queue = setupQueue();
+        queue.init();
+
         video.addEventListener('videoFileLoaded', (event) => {
             currentFile = event.detail.file;
             updateContainerCompatibility();

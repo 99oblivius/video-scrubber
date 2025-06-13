@@ -1,14 +1,32 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::io::{BufRead, BufReader, Write};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use tauri::{AppHandle, Manager};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use tauri::{AppHandle, Emitter, Manager};
+use uuid::Uuid;
 
-// --------- Data Structures ---------
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
 
-#[derive(Debug, Serialize, Deserialize)]
+struct ProcessHandle {
+    child: Child,
+    is_ffmpeg: bool,
+}
+
+static ACTIVE_PROCESSES: Lazy<Mutex<HashMap<String, Arc<Mutex<Option<ProcessHandle>>>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+static PROCESS_UUIDS: Lazy<Mutex<HashMap<String, String>>> = 
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct SourceInfo {
     path: String,
     name: String,
@@ -19,7 +37,7 @@ struct SourceInfo {
     height: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RemoteSourceInfo {
     path: String,
     name: String,
@@ -30,13 +48,13 @@ struct RemoteSourceInfo {
     duration: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct OutputInfo {
     path: String,
     container: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct CompressionSettings {
     video_codec: String,
     audio_codec: String,
@@ -44,13 +62,13 @@ struct CompressionSettings {
     container: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct TrimSettings {
     start_time: f64,
     end_time: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct CropSettings {
     width: u32,
     height: u32,
@@ -58,21 +76,21 @@ struct CropSettings {
     y: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Changes {
     compression: Option<CompressionSettings>,
     trim: Option<TrimSettings>,
     crop: Option<CropSettings>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct SaveOperation {
     source: SourceInfo,
     output: OutputInfo,
     changes: Changes,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RemoteSaveOperation {
     source: RemoteSourceInfo,
     output: OutputInfo,
@@ -142,7 +160,16 @@ pub struct Thumbnail {
     width: Option<u32>,
 }
 
-// --------- Utility Functions ---------
+#[derive(Debug, Clone, Serialize)]
+struct QueueProgress {
+    queue_id: String,
+    progress: f64,
+    speed: Option<String>,
+    eta: Option<String>,
+    status: String,
+    current_size: Option<u64>,
+    total_size: Option<u64>,
+}
 
 fn get_binary_path(app: &AppHandle, binary: &str) -> PathBuf {
     let bin_name = if cfg!(windows) {
@@ -181,12 +208,229 @@ fn get_audio_codec_param(codec: &str) -> &'static str {
     }
 }
 
-/// Builds an ffmpeg command for local video processing based on the provided operation.
+fn parse_ffmpeg_progress(line: &str, total_duration: f64) -> Option<f64> {
+    if let Some(time_pos) = line.find("time=") {
+        let time_str = &line[time_pos + 5..];
+        if let Some(space_pos) = time_str.find(' ') {
+            let time_part = &time_str[..space_pos];
+            let parts: Vec<&str> = time_part.split(':').collect();
+            if parts.len() == 3 {
+                if let (Ok(h), Ok(m), Ok(s)) = (
+                    parts[0].parse::<f64>(),
+                    parts[1].parse::<f64>(),
+                    parts[2].parse::<f64>(),
+                ) {
+                    let current_time = h * 3600.0 + m * 60.0 + s;
+                    return Some((current_time / total_duration) * 100.0);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn parse_ytdlp_progress(line: &str) -> Option<(f64, Option<String>, Option<String>)> {
+    if line.contains("[download]") && line.contains("%") {
+        if let Some(percent_start) = line.find(' ') {
+            let remaining = &line[percent_start + 1..];
+            if let Some(percent_end) = remaining.find('%') {
+                let percent_str = &remaining[..percent_end];
+                if let Ok(percent) = percent_str.trim().parse::<f64>() {
+                    let mut speed = None;
+                    let mut eta = None;
+
+                    if let Some(speed_pos) = line.find(" at ") {
+                        let speed_str = &line[speed_pos + 4..];
+                        if let Some(speed_end) = speed_str.find(" ETA") {
+                            speed = Some(speed_str[..speed_end].to_string());
+                        } else if let Some(speed_end) = speed_str.find(' ') {
+                            speed = Some(speed_str[..speed_end].to_string());
+                        }
+                    }
+
+                    if let Some(eta_pos) = line.find(" ETA ") {
+                        let eta_str = &line[eta_pos + 5..];
+                        eta = Some(eta_str.trim().to_string());
+                    }
+
+                    return Some((percent, speed, eta));
+                }
+            }
+        }
+    }
+    None
+}
+
+fn get_temp_dir() -> PathBuf {
+    std::env::temp_dir().join(".vditmp")
+}
+
+fn ensure_temp_dir() -> Result<PathBuf, String> {
+    let temp_dir = get_temp_dir();
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    Ok(temp_dir)
+}
+
+fn cleanup_temp_files(uuid: &str) -> Result<(), String> {
+    let temp_dir = get_temp_dir();
+    if !temp_dir.exists() {
+        return Ok(());
+    }
+
+    let entries = std::fs::read_dir(&temp_dir)
+        .map_err(|e| format!("Failed to read temp directory: {}", e))?;
+
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let file_name = entry.file_name();
+            let file_name_str = file_name.to_string_lossy();
+            if file_name_str.contains(uuid) {
+                let path = entry.path();
+                if path.is_file() {
+                    let _ = std::fs::remove_file(&path);
+                } else if path.is_dir() {
+                    let _ = std::fs::remove_dir_all(&path);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn terminate_process_tree(pid: u32) -> Result<(), String> {
+    Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn terminate_process_tree(pid: u32) -> Result<(), String> {
+    Command::new("pkill")
+        .args(["-TERM", "-P", &pid.to_string()])
+        .output()
+        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn terminate_process(queue_id: String) -> Result<(), String> {
+    let uuid = {
+        let uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.get(&queue_id).cloned()
+    };
+    
+    let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+    if let Some(process_arc) = processes.remove(&queue_id) {
+        let mut process_opt = process_arc.lock().unwrap();
+        if let Some(mut handle) = process_opt.take() {
+            let pid = handle.child.id();
+
+            if handle.is_ffmpeg {
+                if let Some(mut stdin) = handle.child.stdin.take() {
+                    let _ = stdin.write_all(b"q");
+                    let _ = stdin.flush();
+                    drop(stdin);
+
+                    let uuid_for_cleanup = uuid.clone();
+                    thread::spawn(move || {
+                        thread::sleep(std::time::Duration::from_secs(2));
+                        if let Ok(None) = handle.child.try_wait() {
+                            let _ = terminate_process_tree(pid);
+                        }
+                        if let Some(uuid) = uuid_for_cleanup {
+                            let _ = cleanup_temp_files(&uuid);
+                        }
+                    });
+                    {
+                        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+                        uuids.remove(&queue_id);
+                    }
+                    
+                    return Ok(());
+                }
+            }
+
+            let _ = terminate_process_tree(pid);
+            if let Some(uuid) = &uuid {
+                let _ = cleanup_temp_files(uuid);
+            }
+            {
+                let mut uuids = PROCESS_UUIDS.lock().unwrap();
+                uuids.remove(&queue_id);
+            }
+            
+            Ok(())
+        } else {
+            if let Some(uuid) = &uuid {
+                let _ = cleanup_temp_files(uuid);
+            }
+            {
+                let mut uuids = PROCESS_UUIDS.lock().unwrap();
+                uuids.remove(&queue_id);
+            }
+            
+            Ok(())
+        }
+    } else {
+        if let Some(uuid) = &uuid {
+            let _ = cleanup_temp_files(uuid);
+        }
+        {
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+        }
+        
+        Ok(())
+    }
+}
+
+fn terminate_all_processes() {
+    let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+    let process_ids: Vec<String> = processes.keys().cloned().collect();
+    
+    for queue_id in process_ids {
+        if let Some(process_arc) = processes.remove(&queue_id) {
+            let mut process_opt = process_arc.lock().unwrap();
+            if let Some(mut handle) = process_opt.take() {
+                let pid = handle.child.id();
+                
+                if handle.is_ffmpeg {
+                    if let Some(mut stdin) = handle.child.stdin.take() {
+                        let _ = stdin.write_all(b"q");
+                        let _ = stdin.flush();
+                        drop(stdin);
+                        
+                        thread::sleep(std::time::Duration::from_millis(100));
+                        if let Ok(None) = handle.child.try_wait() {
+                            let _ = terminate_process_tree(pid);
+                        }
+                    } else {
+                        let _ = terminate_process_tree(pid);
+                    }
+                } else {
+                    let _ = terminate_process_tree(pid);
+                }
+            }
+        }
+    }
+}
+
 fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
     let mut cmd = Command::new(get_binary_path(app, "ffmpeg"));
-    cmd.creation_flags(0x08000000) // CREATE_NO_WINDOW for Windows
+    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .arg("-i")
-        .arg(&operation.source.path);
+        .arg(&operation.source.path)
+        .arg("-progress")
+        .arg("-")
+        .arg("-nostats");
 
     if let Some(trim) = &operation.changes.trim {
         cmd.arg("-ss").arg(trim.start_time.to_string());
@@ -205,7 +449,10 @@ fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
     }
 
     if let Some(crop) = &operation.changes.crop {
-        let filter = format!("crop={}:{}:{}:{}", crop.width, crop.height, crop.x, crop.y);
+        let filter = format!(
+            "crop={}:{}:{}:{}",
+            crop.width, crop.height, crop.x, crop.y
+        );
         cmd.arg("-vf").arg(filter);
     }
 
@@ -213,17 +460,126 @@ fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
     cmd
 }
 
-// --------- Tauri Commands ---------
-
 #[tauri::command]
-async fn save_video(app: AppHandle, operation: SaveOperation) -> Result<(), String> {
-    let mut cmd = build_ffmpeg_command(&app, &operation);
-    let output = cmd.output().map_err(|e| format!("FFmpeg error: {}", e))?;
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        Err(format!("FFmpeg error: {}", error))
-    } else {
-        Ok(())
+async fn save_video(
+    app: AppHandle,
+    operation: SaveOperation,
+    queue_id: String,
+) -> Result<(), String> {
+    let uuid = Uuid::new_v4().to_string();
+    {
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.insert(queue_id.clone(), uuid.clone());
+    }
+    let temp_dir = ensure_temp_dir()?;
+    
+    let output_ext = Path::new(&operation.output.path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("mp4");
+    let temp_file = temp_dir.join(format!("{}.{}", uuid, output_ext));
+    let temp_path = temp_file.to_string_lossy().to_string();
+    
+    let total_duration = operation.source.duration;
+    
+    let temp_operation = SaveOperation {
+        source: operation.source.clone(),
+        output: OutputInfo {
+            path: temp_path.clone(),
+            container: operation.output.container.clone(),
+        },
+        changes: operation.changes.clone(),
+    };
+    
+    let mut cmd = build_ffmpeg_command(&app, &temp_operation);
+
+    let mut child = cmd.spawn().map_err(|e| {
+        let _ = cleanup_temp_files(&uuid);
+        format!("FFmpeg error: {}", e)
+    })?;
+    let stderr = child.stderr.take().ok_or_else(|| {
+        let _ = cleanup_temp_files(&uuid);
+        "Failed to capture stderr".to_string()
+    })?;
+
+    let child_arc = Arc::new(Mutex::new(Some(ProcessHandle {
+        child,
+        is_ffmpeg: true,
+    })));
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.insert(queue_id.clone(), child_arc.clone());
+    }
+
+    let reader = BufReader::new(stderr);
+    let queue_id_for_thread = queue_id.clone();
+    let app_clone = app.clone();
+
+    thread::spawn(move || {
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if let Some(progress) = parse_ffmpeg_progress(&line, total_duration) {
+                    let _ = app_clone.emit(
+                        "queue-progress",
+                        QueueProgress {
+                            queue_id: queue_id_for_thread.clone(),
+                            progress,
+                            speed: None,
+                            eta: None,
+                            status: "processing".to_string(),
+                            current_size: None,
+                            total_size: None,
+                        },
+                    );
+                }
+            }
+        }
+    });
+
+    let exit_status = loop {
+        thread::sleep(std::time::Duration::from_millis(100));
+        let mut child_lock = child_arc.lock().unwrap();
+        if let Some(ref mut handle) = *child_lock {
+            match handle.child.try_wait() {
+                Ok(Some(status)) => break Ok(status),
+                Ok(None) => continue,
+                Err(e) => break Err(format!("Failed to wait for process: {}", e)),
+            }
+        } else {
+            break Err("Process was terminated".to_string());
+        }
+    };
+
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.remove(&queue_id);
+    }
+    {
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.remove(&queue_id);
+    }
+
+    match exit_status {
+        Ok(status) if status.success() => {
+            match std::fs::rename(&temp_path, &operation.output.path) {
+                Ok(_) => {
+                    let _ = cleanup_temp_files(&uuid);
+                    Ok(())
+                }
+                Err(e) => {
+                    let _ = cleanup_temp_files(&uuid);
+                    Err(format!("Failed to move file to final destination: {}", e))
+                }
+            }
+        }
+        Ok(_) => {
+            let _ = cleanup_temp_files(&uuid);
+            Err("FFmpeg processing failed".to_string())
+        }
+        Err(e) => {
+            let _ = cleanup_temp_files(&uuid);
+            Err(e)
+        }
     }
 }
 
@@ -231,29 +587,45 @@ async fn save_video(app: AppHandle, operation: SaveOperation) -> Result<(), Stri
 async fn process_remote_video(
     app: AppHandle,
     operation: RemoteSaveOperation,
+    queue_id: String,
 ) -> Result<(), String> {
+    let uuid = Uuid::new_v4().to_string();
+    {
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.insert(queue_id.clone(), uuid.clone());
+    }
+    
+    let temp_dir = ensure_temp_dir()?;
+    
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let ffmpeg_path = get_binary_path(&app, "ffmpeg");
     let output_ext = Path::new(&operation.output.path)
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("mp4");
-    let source_url = operation.source.path;
-    let temp_file = std::env::temp_dir().join(".vditmp.mp4");
+    let source_url = operation.source.path.clone();
+    let temp_file = temp_dir.join(format!("{}.{}", uuid, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
     let mut ytdlp_cmd = Command::new(&ytdlp_path);
-    ytdlp_cmd.args([
-        "-f",
-        "bv*+ba/best",
-        "-o",
-        &temp_path,
-        "--merge-output-format",
-        output_ext,
-        "--ffmpeg-location",
-        &ffmpeg_path.to_string_lossy(),
-        "--no-playlist",
-    ]);
+    ytdlp_cmd
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .args([
+            "-f",
+            "bv*+ba/best",
+            "-o",
+            &temp_path,
+            "--ffmpeg-location",
+            &ffmpeg_path.to_string_lossy(),
+            "--remux-video",
+            output_ext,
+            "--no-playlist",
+            "--progress",
+            "--newline",
+        ]);
 
     if let Some(trim) = &operation.changes.trim {
         let format_time = |seconds: f64| -> String {
@@ -269,19 +641,97 @@ async fn process_remote_video(
         ytdlp_cmd.args(["--download-sections", &sections]);
     }
 
-    ytdlp_cmd.arg(source_url);
-    let download_result = ytdlp_cmd
-        .output()
-        .map_err(|e| format!("Failed to download with yt-dlp: {}", e))?;
-    if !download_result.status.success() {
-        return Err(String::from_utf8_lossy(&download_result.stderr).into_owned());
+    ytdlp_cmd.arg(&source_url);
+
+    let mut child = ytdlp_cmd
+        .spawn()
+        .map_err(|e| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            format!("Failed to start yt-dlp: {}", e)
+        })?;
+    let stdout = child.stdout.take().ok_or_else(|| {
+        let _ = cleanup_temp_files(&uuid);
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.remove(&queue_id);
+        "Failed to capture stdout".to_string()
+    })?;
+
+    let child_arc = Arc::new(Mutex::new(Some(ProcessHandle {
+        child,
+        is_ffmpeg: false,
+    })));
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.insert(queue_id.clone(), child_arc.clone());
+    }
+
+    let reader = BufReader::new(stdout);
+    let queue_id_for_thread = queue_id.clone();
+    let app_clone = app.clone();
+
+    thread::spawn(move || {
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if let Some((progress, speed, eta)) = parse_ytdlp_progress(&line) {
+                    let _ = app_clone.emit(
+                        "queue-progress",
+                        QueueProgress {
+                            queue_id: queue_id_for_thread.clone(),
+                            progress,
+                            speed,
+                            eta,
+                            status: "downloading".to_string(),
+                            current_size: None,
+                            total_size: None,
+                        },
+                    );
+                }
+            }
+        }
+    });
+
+    let download_exit_status = loop {
+        thread::sleep(std::time::Duration::from_millis(100));
+        let mut child_lock = child_arc.lock().unwrap();
+        if let Some(ref mut handle) = *child_lock {
+            match handle.child.try_wait() {
+                Ok(Some(status)) => break Ok(status),
+                Ok(None) => continue,
+                Err(e) => break Err(format!("Failed to wait for yt-dlp: {}", e)),
+            }
+        } else {
+            break Err("Download was terminated".to_string());
+        }
+    };
+
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.remove(&queue_id);
+    }
+
+    match download_exit_status {
+        Ok(status) if !status.success() => {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            return Err("Download failed or was cancelled".to_string());
+        }
+        Err(e) => {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            return Err(e);
+        }
+        _ => {}
     }
 
     let actual_width: u32;
     let actual_height: u32;
 
     let probe_output = Command::new(get_binary_path(&app, "ffprobe"))
-        .creation_flags(0x08000000)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .args([
             "-v",
             "quiet",
@@ -294,9 +744,17 @@ async fn process_remote_video(
             &temp_path,
         ])
         .output()
-        .map_err(|e| format!("Failed to get video dimensions: {}", e))?;
+        .map_err(|e| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            format!("Failed to get video dimensions: {}", e)
+        })?;
 
     if !probe_output.status.success() {
+        let _ = cleanup_temp_files(&uuid);
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.remove(&queue_id);
         return Err(format!(
             "FFprobe dimension query failed: {}",
             String::from_utf8_lossy(&probe_output.stderr)
@@ -309,6 +767,9 @@ async fn process_remote_video(
     let dimensions: Vec<&str> = dimensions_str.split('x').collect();
 
     if dimensions.len() != 2 {
+        let _ = cleanup_temp_files(&uuid);
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.remove(&queue_id);
         return Err(format!(
             "Could not parse video dimensions: {}",
             dimensions_str
@@ -317,10 +778,20 @@ async fn process_remote_video(
 
     actual_width = dimensions[0]
         .parse()
-        .map_err(|_| format!("Invalid width value: {}", dimensions[0]))?;
+        .map_err(|_| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            format!("Invalid width value: {}", dimensions[0])
+        })?;
     actual_height = dimensions[1]
         .parse()
-        .map_err(|_| format!("Invalid height value: {}", dimensions[1]))?;
+        .map_err(|_| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            format!("Invalid height value: {}", dimensions[1])
+        })?;
 
     let mut adjusted_changes = operation.changes;
     if let Some(ref mut crop) = adjusted_changes.crop {
@@ -334,8 +805,8 @@ async fn process_remote_video(
             crop.width = ((crop.width as f64 * width_scale).round() as u32).max(2);
             crop.height = ((crop.height as f64 * height_scale).round() as u32).max(2);
             crop.x = ((crop.x as f64 * width_scale).round() as u32).min(actual_width - crop.width);
-            crop.y =
-                ((crop.y as f64 * height_scale).round() as u32).min(actual_height - crop.height);
+            crop.y = ((crop.y as f64 * height_scale).round() as u32)
+                .min(actual_height - crop.height);
 
             if crop.width % 2 != 0 {
                 crop.width -= 1;
@@ -360,9 +831,20 @@ async fn process_remote_video(
     }
 
     if !(adjusted_changes.crop.is_some() || adjusted_changes.compression.is_some()) {
-        std::fs::rename(&temp_path, &operation.output.path)
-            .map_err(|e| format!("Failed to save file: {}", e))?;
-        return Ok(());
+        match std::fs::rename(&temp_path, &operation.output.path) {
+            Ok(_) => {
+                let _ = cleanup_temp_files(&uuid);
+                let mut uuids = PROCESS_UUIDS.lock().unwrap();
+                uuids.remove(&queue_id);
+                return Ok(());
+            }
+            Err(e) => {
+                let _ = cleanup_temp_files(&uuid);
+                let mut uuids = PROCESS_UUIDS.lock().unwrap();
+                uuids.remove(&queue_id);
+                return Err(format!("Failed to save file: {}", e));
+            }
+        }
     }
 
     let postprocess_operation = SaveOperation {
@@ -379,25 +861,99 @@ async fn process_remote_video(
         changes: adjusted_changes,
     };
 
+    let total_duration = postprocess_operation.source.duration;
     let mut ffmpeg_cmd = build_ffmpeg_command(&app, &postprocess_operation);
-    let ffmpeg_result = ffmpeg_cmd
-        .output()
-        .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
-    if !ffmpeg_result.status.success() {
-        return Err(String::from_utf8_lossy(&ffmpeg_result.stderr).into_owned());
+    let mut ffmpeg_child = ffmpeg_cmd
+        .spawn()
+        .map_err(|e| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            format!("Failed to execute FFmpeg: {}", e)
+        })?;
+    let stderr = ffmpeg_child
+        .stderr
+        .take()
+        .ok_or_else(|| {
+            let _ = cleanup_temp_files(&uuid);
+            let mut uuids = PROCESS_UUIDS.lock().unwrap();
+            uuids.remove(&queue_id);
+            "Failed to capture stderr".to_string()
+        })?;
+
+    let ffmpeg_child_arc = Arc::new(Mutex::new(Some(ProcessHandle {
+        child: ffmpeg_child,
+        is_ffmpeg: true,
+    })));
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.insert(queue_id.clone(), ffmpeg_child_arc.clone());
     }
 
-    if temp_file.exists() {
-        let _ = std::fs::remove_file(&temp_file);
+    let reader = BufReader::new(stderr);
+    let queue_id_for_ffmpeg_thread = queue_id.clone();
+    let app_clone = app.clone();
+
+    thread::spawn(move || {
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if let Some(progress) = parse_ffmpeg_progress(&line, total_duration) {
+                    let _ = app_clone.emit(
+                        "queue-progress",
+                        QueueProgress {
+                            queue_id: queue_id_for_ffmpeg_thread.clone(),
+                            progress,
+                            speed: None,
+                            eta: None,
+                            status: "processing".to_string(),
+                            current_size: None,
+                            total_size: None,
+                        },
+                    );
+                }
+            }
+        }
+    });
+
+    let ffmpeg_exit_status = loop {
+        thread::sleep(std::time::Duration::from_millis(100));
+        let mut child_lock = ffmpeg_child_arc.lock().unwrap();
+        if let Some(ref mut handle) = *child_lock {
+            match handle.child.try_wait() {
+                Ok(Some(status)) => break Ok(status),
+                Ok(None) => continue,
+                Err(e) => break Err(format!("Failed to wait for FFmpeg: {}", e)),
+            }
+        } else {
+            break Err("Processing was terminated".to_string());
+        }
+    };
+
+    {
+        let mut processes = ACTIVE_PROCESSES.lock().unwrap();
+        processes.remove(&queue_id);
+    }
+    {
+        let mut uuids = PROCESS_UUIDS.lock().unwrap();
+        uuids.remove(&queue_id);
     }
 
-    Ok(())
+    let _ = cleanup_temp_files(&uuid);
+
+    match ffmpeg_exit_status {
+        Ok(status) if status.success() => Ok(()),
+        Ok(_) => Err("FFmpeg processing failed".to_string()),
+        Err(e) => Err(e),
+    }
 }
 
 #[tauri::command]
 async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, String> {
     let output = Command::new(get_binary_path(&app, "ffprobe"))
-        .creation_flags(0x08000000)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .args([
             "-v",
             "quiet",
@@ -423,7 +979,7 @@ async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, S
 async fn get_yt_video_info(app: AppHandle, url: String) -> Result<YtVideoInfo, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let output = Command::new(ytdlp_path)
-        .creation_flags(0x08000000)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .args(["-j", "--no-playlist", &url])
         .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
@@ -446,7 +1002,8 @@ async fn get_best_streaming_url(
 ) -> Result<String, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let mut cmd = Command::new(ytdlp_path);
-    cmd.creation_flags(0x08000000).arg("--no-playlist");
+    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .arg("--no-playlist");
 
     if let Some(format) = format_preference {
         cmd.args(["-f", &format]);
@@ -471,7 +1028,7 @@ async fn get_best_streaming_url(
 async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let output = Command::new(&ytdlp_path)
-        .creation_flags(0x08000000)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .arg("--version")
         .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
@@ -506,8 +1063,20 @@ fn main() {
             get_yt_video_info,
             get_best_streaming_url,
             check_ytdlp_version,
-            show_app_window
+            show_app_window,
+            terminate_process
         ])
+        .setup(|_app| {
+            let _ = ensure_temp_dir();
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if window.label() == "main" {
+                    terminate_all_processes();
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

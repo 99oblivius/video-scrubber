@@ -111,11 +111,39 @@ export const setupQueue = () => {
             }, 300);
         }, 2000);
     };
+
+    const restoreQueue = async () => {
+        try {
+            const existingItems = await invoke('get_queue_state');
+            
+            existingItems.forEach(item => {
+                const queueItem = createQueueItem(item.queue_id, item.file_name);
+                queueContent.appendChild(queueItem);
+                queueItems.set(item.queue_id, queueItem);
+                
+                updateQueueItem({
+                    queue_id: item.queue_id,
+                    progress: item.progress,
+                    status: item.status,
+                    speed: item.speed,
+                    eta: item.eta
+                });
+            });
+            
+            if (existingItems.length > 0) {
+                queueContainer.classList.add('visible');
+            }
+        } catch (error) {
+            console.error('Failed to restore queue state:', error);
+        }
+    };
     
     const init = async () => {
         await listen('queue-progress', (event) => {
             updateQueueItem(event.payload);
         });
+
+        await restoreQueue();
     };
     
     return {

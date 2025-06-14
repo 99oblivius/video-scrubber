@@ -219,8 +219,6 @@ export const setupTrim = (video, metadata) => {
             window.trimStart = undefined;
             window.trimEnd = undefined;
             
-            previewVideo.src = video.src;
-            
             if (trimBtn.classList.contains('active')) {
                 updateTrimRegion();
             }

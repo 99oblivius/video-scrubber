@@ -26,6 +26,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
     };
     
     const loadVideoFromUrl = async (url) => {
+        console.info("Loading video from URL");
         try {
             loadUrlButton.disabled = true;
             loadUrlButton.textContent = 'Loading...';
@@ -41,19 +42,28 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             const size = videoInfo.filesize || videoInfo.filesize_approx || 0;
             const title = videoInfo.title || 'Unknown Title';
             
-            const getRecentEntries = () => {
+            function getRecentEntries() {
                 const stored = localStorage.getItem('recentVideoEntries');
                 return stored ? JSON.parse(stored) : [];
-            };
-            
-            const saveRecentEntry = (url, title) => {
-                let recent = getRecentEntries();
-                recent = recent.filter(entry => entry.url !== url);
-                recent.unshift({ url, title: title || url });
-                recent = recent.slice(0, 5);
+            }
+
+            function saveRecentEntry(url, title) {
+                let normalized;
+                try {
+                    normalized = new URL(url).href;
+                } catch {
+                    normalized = url.trim();
+                }
+
+                const entry = { url: normalized, title: title || normalized };
+                let recent = getRecentEntries()
+                    .filter(e => e.url !== entry.url);
+
+                recent.unshift(entry);
+                recent = recent.slice(0, 10);
                 localStorage.setItem('recentVideoEntries', JSON.stringify(recent));
-            };
-            
+            }
+
             saveRecentEntry(url, title);
             
             const datalist = document.getElementById('url-suggestions');

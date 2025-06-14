@@ -29,39 +29,52 @@ export const setupQueue = () => {
         const item = document.createElement('div');
         item.className = 'queue-item';
         item.dataset.queueId = id;
-        
         item.innerHTML = `
-            <div class="queue-item-header">
-                <span class="queue-item-name">${fileName}</span>
-                <span class="queue-item-status">Preparing...</span>
+        <div class="queue-item-header">
+            <span class="queue-item-name">${fileName}</span>
+            <span class="queue-item-status">Preparing...</span>
+        </div>
+        <div class="queue-item-progress">
+            <button class="queue-terminate" title="Cancel">×</button>
+            <div class="queue-progress-bar">
+            <div class="queue-progress-fill"></div>
             </div>
-            <div class="queue-item-progress">
-                <button class="queue-terminate" title="Cancel">×</button>
-                <div class="queue-progress-bar">
-                    <div class="queue-progress-fill"></div>
-                </div>
-                <span class="queue-progress-text">0%</span>
-            </div>
-            <div class="queue-item-stats">
-                <span class="queue-speed"></span>
-                <span class="queue-eta"></span>
-            </div>
+            <span class="queue-progress-text">0%</span>
+        </div>
+        <div class="queue-item-stats">
+            <span class="queue-speed"></span>
+            <span class="queue-eta"></span>
+        </div>
         `;
 
-        item.querySelector('.queue-terminate').addEventListener('click', async () => {
-            const button = item.querySelector('.queue-terminate');
-            button.disabled = true;
-            console.info("Terminating: " + id.toString());
+        const terminateBtn = item.querySelector('.queue-terminate');
+        const statusText = item.querySelector('.queue-item-status');
+
+        terminateBtn.addEventListener('click', async () => {
+            terminateBtn.disabled = true;
+            statusText.textContent = 'Cancelling…';
+            item.classList.add('terminating');
+
+            const revert = setTimeout(() => {
+                item.classList.remove('terminating');
+                terminateBtn.disabled = false;
+                statusText.textContent = 'Cancel failed';
+            }, 5000);
+
             try {
                 await invoke('terminate_process', { queueId: id });
+                clearTimeout(revert);
                 completeQueueItem(id, false);
-                window.showNotification("Process cancelled", "info");
-            } catch (error) {
-                console.warn('Process termination:', error);
-                button.disabled = false;
+                window.showNotification('Process cancelled', 'info');
+            } catch (e) {
+                clearTimeout(revert);
+                console.warn(e);
+                item.classList.remove('terminating');
+                terminateBtn.disabled = false;
+                statusText.textContent = 'Error cancelling';
             }
-        });
-        
+            });
+
         return item;
     };
     
@@ -76,6 +89,8 @@ export const setupQueue = () => {
     const updateQueueItem = (data) => {
         const item = queueItems.get(data.queue_id);
         if (!item) return;
+
+        if (item.classList.contains('terminating')) return;
         
         const progressFill = item.querySelector('.queue-progress-fill');
         const progressText = item.querySelector('.queue-progress-text');
@@ -96,6 +111,7 @@ export const setupQueue = () => {
         const item = queueItems.get(id);
         if (!item) return;
         
+        item.classList.remove('terminating');
         const statusText = item.querySelector('.queue-item-status');
         statusText.textContent = success ? 'Complete' : 'Failed';
         item.classList.add(success ? 'complete' : 'failed');

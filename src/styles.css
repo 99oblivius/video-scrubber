@@ -653,6 +653,11 @@ video::-webkit-media-controls {
   transition: all 0.3s;
 }
 
+.queue-item.terminating {
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
 [data-theme=light] .queue-item {
   background: rgba(0, 0, 0, 0.03);
   border: 1px solid rgba(0, 0, 0, 0.08);

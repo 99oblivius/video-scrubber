@@ -35,6 +35,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "Multimedia design",
+    "shortDescription": "Livideo",
     "resources": [
       "resources/**/*"
     ],

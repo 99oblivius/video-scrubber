@@ -90,6 +90,8 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             await invoke('update_window_title', { title: `Livideo - "${safeTitle}"` });
             saveRecentEntry(url, title);
             updateHistorySuggestions();
+
+            urlInput.value = "";
             
             const virtualFile = {
                 path: url,

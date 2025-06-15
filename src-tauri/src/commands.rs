@@ -367,6 +367,85 @@ pub async fn get_best_streaming_url(
 }
 
 #[tauri::command]
+pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearchResult>, String> {
+    let ytdlp_path = get_binary_path(&app, "yt-dlp");
+    
+    let format_string = "%(title)s<=|>#<%(url)s<=|>#<%(uploader)s<=|>#<%(duration_string)s<=|>#<%(view_count)s<=|>#<%(id)s";
+    
+    let mut cmd = Command::new(ytdlp_path);
+    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .args([
+            "--print", format_string,
+            "--no-simulate",
+            "--skip-download", 
+            "--flat-playlist",
+            "--ignore-errors",
+            "--quiet",
+            "--no-warnings",
+            "--encoding", "utf-8",
+            "--default-search", "ytsearch",
+            &format!("ytsearch10:{}", query)
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    
+    cmd.env("PYTHONIOENCODING", "utf-8")
+       .env("LANG", "en_US.UTF-8")
+       .env("LC_ALL", "en_US.UTF-8");
+    
+    let output = cmd.output()
+        .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(vec![]);
+    }
+
+    let output_str = String::from_utf8(output.stdout)
+        .unwrap_or_else(|e| {
+            eprintln!("UTF-8 parsing failed: {}", e);
+            String::from_utf8_lossy(&e.into_bytes()).into_owned()
+        });
+    
+    let mut results = Vec::new();
+    
+    for line in output_str.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        
+        let parts: Vec<&str> = line.split("<=|>#<").collect();
+        if parts.len() >= 6 {
+            let result = YtSearchResult {
+                title: parts[0].to_string(),
+                url: parts[1].to_string(),
+                uploader: if parts[2] != "NA" && !parts[2].is_empty() {
+                    Some(parts[2].to_string())
+                } else {
+                    None
+                },
+                duration_string: if parts[3] != "NA" && !parts[3].is_empty() {
+                    Some(parts[3].to_string())
+                } else {
+                    None
+                },
+                view_count: parts[4].parse::<u64>().ok(),
+                id: if parts[5] != "NA" && !parts[5].is_empty() {
+                    Some(parts[5].to_string())
+                } else {
+                    None
+                },
+            };
+            
+            if !result.url.is_empty() {
+                results.push(result);
+            }
+        }
+    }
+    
+    Ok(results)
+}
+
+#[tauri::command]
 pub async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let output = Command::new(&ytdlp_path)

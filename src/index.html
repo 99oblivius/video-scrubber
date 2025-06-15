@@ -13,7 +13,7 @@
 <body>
     <div id="splash">
         <div class="logo-container">
-            <img src="assets/icons/video-editor-icon.png" alt="Loading..." draggable="false"/>
+            <img src="assets/icons/video-editor-icon.png" alt="Loading..." draggable="false" />
         </div>
     </div>
     <div class="main-container">
@@ -26,7 +26,11 @@
                         <div class="drop-message">Click to Open</div>
                     </div>
                     <div class="url-input-container">
-                        <input tabindex="20" type="text" id="videoUrlInput" placeholder="or paste a URL" class="url-input">
+                        <div class="url-input-wrapper">
+                            <input tabindex="20" type="text" id="videoUrlInput" placeholder="paste a URL or search"
+                                class="url-input">
+                            <div class="url-search-spinner" id="urlSearchSpinner"></div>
+                        </div>
                         <button tabindex="20" id="loadUrlButton" class="url-button">Load</button>
                     </div>
                 </div>
@@ -62,8 +66,8 @@
                             <div class="compress-select-container">
                                 <label class="compress-label" for="quality-slider">Quality</label>
                                 <div class="slider-container">
-                                    <input tabindex="91" type="range" id="quality-slider" class="compress-slider" min="0" max="100"
-                                        value="75" />
+                                    <input tabindex="91" type="range" id="quality-slider" class="compress-slider"
+                                        min="0" max="100" value="75" />
                                     <span class="slider-value">75%</span>
                                 </div>
                             </div>
@@ -117,4 +121,5 @@
         <div id="global-notification"></div>
     </div>
 </body>
+
 </html>

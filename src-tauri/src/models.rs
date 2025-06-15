@@ -144,3 +144,13 @@ pub struct QueueProgress {
     pub current_size: Option<u64>,
     pub total_size: Option<u64>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct YtSearchResult {
+    pub title: String,
+    pub url: String,
+    pub uploader: Option<String>,
+    pub duration_string: Option<String>,
+    pub view_count: Option<u64>,
+    pub id: Option<String>,
+}

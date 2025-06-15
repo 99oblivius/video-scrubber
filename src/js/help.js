@@ -12,14 +12,13 @@ export const setupHelpTip = (settings) => {
                 { keys: [',', '.'], description: '±1 Frame' },
                 { keys: ['←', '→'], description: '±1 second' },
                 { keys: ['0-9'], description: 'Jump to 0-90%' },
-                { keys: ['Shft'], description: '± Frames' },
-                { keys: ['Ctrl'], description: '± Seconds' },
             ]
         },
         file: {
             title: 'File',
             shortcuts: [
-                { keys: ['Ctrl', 'O'], description: 'Open File' },
+                { keys: ['Ctrl', 'O'], description: 'Open Menu' },
+                { keys: ['2xCtrl O'], description: 'Open File' },
                 { keys: ['Ctrl', 'S'], description: 'Save' },
             ]
         },

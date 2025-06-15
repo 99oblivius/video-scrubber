@@ -140,8 +140,9 @@ export const setupControls = (video, metadata, settings, dropzone) => {
                 if (e.code === 'Escape') e.target.blur();
                 return;
             }
-
-            if ((e.ctrlKey || e.metaKey) && e.key === 'p') e.preventDefault();
+            
+            if (e.key === "F3") e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && 'pfgujIJSC'.includes(e.key)) e.preventDefault();
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             
             switch(e.code) {

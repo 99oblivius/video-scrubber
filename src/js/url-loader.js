@@ -224,6 +224,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             }
         } catch (error) {
             console.error('Search failed:', error);
+            window.showNotification("YtSearch failed", "error");
         } finally {
             if (currentSearchRequest === query) {
                 hideSearchSpinner();

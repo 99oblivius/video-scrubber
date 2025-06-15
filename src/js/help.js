@@ -20,6 +20,7 @@ export const setupHelpTip = (settings) => {
                 { keys: ['Ctrl', 'O'], description: 'Open Menu' },
                 { keys: ['2xCtrl O'], description: 'Open File' },
                 { keys: ['Ctrl', 'S'], description: 'Save' },
+                { keys: ['F12'], description: 'DevTools' },
             ]
         },
         audio: {

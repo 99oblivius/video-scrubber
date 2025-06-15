@@ -64,7 +64,6 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
     };
     
     const loadVideoFromUrl = async (url) => {
-        console.info("Loading video from URL");
         try {
             loadUrlButton.disabled = true;
             loadUrlButton.textContent = 'Loading...';
@@ -86,12 +85,15 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             const size = videoInfo.filesize || videoInfo.filesize_approx || 0;
             const title = videoInfo.title || 'Unknown Title';
             
+            let safeTitle = window.makeSafeFileName(title);
+            document.title = safeTitle;
+            await invoke('update_window_title', { title: `Livideo - "${safeTitle}"` });
             saveRecentEntry(url, title);
             updateHistorySuggestions();
             
             const virtualFile = {
                 path: url,
-                name: `${title}.${videoInfo.ext || videoInfo.video_ext || 'mp4'}`,
+                name: `${makeSafeFileName(safeTitle)}.${videoInfo.ext || videoInfo.video_ext || 'mp4'}`,
                 size: size,
                 type: 'video/mp4',
                 lastModified: Date.now(),

@@ -18,7 +18,7 @@ use std::{
     thread,
     io::{BufReader, Write}
 };
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 pub async fn terminate_process(queue_id: String) -> Result<(), String> {
@@ -471,4 +471,11 @@ pub fn show_app_window(window: tauri::Window) -> Result<(), String> {
 #[tauri::command]
 pub fn get_queue_state() -> Vec<crate::process::QueueItemInfo> {
     crate::process::get_all_queue_items()
+}
+
+#[tauri::command]
+pub fn update_window_title(app: AppHandle, title: String) -> Result<(), String> {
+    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    window.set_title(&title).map_err(|e| e.to_string())?;
+    Ok(())
 }

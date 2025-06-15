@@ -1,5 +1,5 @@
 const { open } = window.__TAURI__.dialog;
-const { convertFileSrc } = window.__TAURI__.core;
+const { convertFileSrc, invoke } = window.__TAURI__.core;
 
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
@@ -48,6 +48,11 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
                 detail: { file: fileObject } 
             });
+
+            let safeTitle = window.makeSafeFileName(fileObject.name);
+            document.title = safeTitle;
+            await invoke('update_window_title', { title: `Livideo - "${safeTitle}"` });
+            
             video.dispatchEvent(videoLoadEvent);
             
             video.addEventListener('loadedmetadata', async () => {

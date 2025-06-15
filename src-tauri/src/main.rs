@@ -35,6 +35,7 @@ fn main() {
             commands::terminate_process,
             commands::get_queue_state,
             commands::search_youtube,
+            commands::update_window_title,
         ])
         .setup(|_app| {
             let _ = ensure_temp_dir();

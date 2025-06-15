@@ -12,6 +12,14 @@ import { setupSettings } from './settings.js';
 import { setupTrim } from './trim.js';
 import { setupUrlLoader } from './url-loader.js';
 
+const makeSafeFileName = (title, maxLen = 100) => title
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\/?<>\\:*|":]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLen);
+
 const showNotification = (message, type = "info", duration = 3000) => {
     const notification = document.getElementById("global-notification");
     if (!notification) return;
@@ -121,6 +129,7 @@ const player = (() => {
     
     const init = () => {
         window.showNotification = showNotification;
+        window.makeSafeFileName = makeSafeFileName;
         
         const settings = setupSettings();
         const metadata = setupMetadata(v);

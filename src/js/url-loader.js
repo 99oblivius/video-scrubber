@@ -69,18 +69,17 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             loadUrlButton.textContent = 'Loading...';
             urlInput.disabled = true;
             
-            const streamingUrl = await invoke('get_best_streaming_url', { 
+            const { urls: streamingUrls, info: videoInfo } = await invoke('get_streaming_url', { 
                 url, 
-                format_preference: 'b' 
+                format_preference: 'bv[height<=1080]*+ba/b' 
             });
-            const videoInfo = await invoke('get_yt_video_info', { url });
+
+            const lastFormat = videoInfo.formats?.[videoInfo.formats.length - 1];
+
+            const width = lastFormat?.width ?? videoInfo.width;
+            const height = lastFormat?.height ?? videoInfo.height;
+            const fps = lastFormat?.fps ?? videoInfo.fps;
             
-            const width = videoInfo.width || 
-                (videoInfo.formats && videoInfo.formats[0]?.width) || 0;
-            const height = videoInfo.height || 
-                (videoInfo.formats && videoInfo.formats[0]?.height) || 0;
-            const fps = videoInfo.fps || 
-                (videoInfo.formats && videoInfo.formats[0]?.fps) || 30;
             const duration = videoInfo.duration || 0;
             const size = videoInfo.filesize || videoInfo.filesize_approx || 0;
             const title = videoInfo.title || 'Unknown Title';
@@ -92,16 +91,18 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             updateHistorySuggestions();
 
             urlInput.value = "";
+
+            const ext = videoInfo.ext || videoInfo.video_ext || 'mp4';
             
             const virtualFile = {
                 path: url,
-                name: `${makeSafeFileName(safeTitle)}.${videoInfo.ext || videoInfo.video_ext || 'mp4'}`,
+                name: `${makeSafeFileName(safeTitle)}.${ext}`,
                 size: size,
-                type: 'video/mp4',
+                type: `video/${ext}`,
                 lastModified: Date.now(),
                 isStream: true,
                 originalUrl: url,
-                streamingUrl: streamingUrl,
+                streamingUrls: streamingUrls,
                 width: width,
                 height: height,
                 duration: duration,
@@ -115,36 +116,31 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
                 abr: videoInfo.abr
             };
             
-            if (streamingUrl.includes('.m3u8')) {
-                window.showNotification(
-                    ".m3u8 playlists not yet supported", 
-                    "error"
-                );
-            } else {
-                video.src = streamingUrl;
-                video.focus();
-                dropzone.setAddMedia(false);
-                
-                const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
-                    detail: { file: virtualFile } 
-                });
-                
-                video.addEventListener('loadedmetadata', async () => {
-                    if (!virtualFile.width && video.videoWidth) 
-                        virtualFile.width = video.videoWidth;
-                    if (!virtualFile.height && video.videoHeight) 
-                        virtualFile.height = video.videoHeight;
-                    if (!virtualFile.duration && video.duration) 
-                        virtualFile.duration = video.duration;
-                    
-                    await metadata.updateMetadataDisplay(virtualFile);
-                    video.dispatchEvent(videoLoadEvent);
-                }, { once: true });
-            }
+            console.info(virtualFile);
+            video.innerHTML = '';
+            
+            streamingUrls.forEach(function (stream) {
+                const element = document.createElement('source');
+                element.src = stream;
+                video.appendChild(element);
+            });
+            
+            dropzone.setAddMedia(false);
+            
+            await metadata.updateMetadataDisplay(virtualFile);
+            
+            const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
+                detail: { file: virtualFile } 
+            });
+            video.dispatchEvent(videoLoadEvent);
+            
+            video.load();
+            video.focus();
             
             return true;
         } catch (error) {
             window.showNotification("Failed to load video from URL", "error");
+            console.error(error);
             return false;
         } finally {
             loadUrlButton.disabled = false;

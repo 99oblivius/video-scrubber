@@ -193,7 +193,7 @@ export const setupMetadata = (video) => {
     const getFPS = () => detectedFPS;
 
     const updateMetadataDisplay = async (file) => {
-        if (!video.src) return;
+        if (!video.innerHTML.trim()) return;
 
         try {
             await fetchProbeData(file);
@@ -202,9 +202,9 @@ export const setupMetadata = (video) => {
             const videoCodec = getVideoCodec();
             const audioCodec = getAudioCodec();
             
-            const duration = file.isStream ? (file.duration || video.duration || 0) : video.duration;
-            const width = file.isStream ? (file.width || video.videoWidth || 0) : video.videoWidth;
-            const height = file.isStream ? (file.height || video.videoHeight || 0) : video.videoHeight;
+            const duration = file.duration || (file.isStream ? 0 : video.duration) || 0;
+            const width = file.width || (file.isStream ? 0 : video.videoWidth) || 0;
+            const height = file.height || (file.isStream ? 0 : video.videoHeight) || 0;
             const size = file.size || 0;
             
             const timeDisplay = $('.time-display');
@@ -247,6 +247,23 @@ export const setupMetadata = (video) => {
             metadataItems.push(`</div>`);
             
             timeDisplay.innerHTML = metadataItems.join('');
+            
+            if (!width || !height || !duration) {
+                video.addEventListener('loadedmetadata', () => {
+                    if (!width && video.videoWidth) {
+                        const resDisplay = $('#resolutionDisplay');
+                        if (resDisplay) {
+                            resDisplay.textContent = `${video.videoWidth}×${video.videoHeight}`;
+                        }
+                    }
+                    if (!duration && video.duration) {
+                        const durDisplay = $('#durationDisplay');
+                        if (durDisplay) {
+                            durDisplay.textContent = formatDuration(video.duration);
+                        }
+                    }
+                }, { once: true });
+            }
         } catch (error) {
             console.error('Failed to update metadata display:', error);
         }

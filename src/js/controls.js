@@ -52,7 +52,7 @@ export const setupControls = (video, metadata, settings, dropzone) => {
     };
 
     const openMedia = () => {
-        if (video.src) dropzone.setAddMedia();
+        if (video.innerHTML.trim()) dropzone.setAddMedia();
     };
 
     const toggleTheme = () => {

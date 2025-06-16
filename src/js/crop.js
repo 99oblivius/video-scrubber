@@ -241,6 +241,7 @@ export const setupCrop = (video, settings) => {
                 document.addEventListener('click', handleClick);
             }, 0);
         }
+        cropBtn.focus();
     };
 
     const reset = () => {
@@ -267,7 +268,7 @@ export const setupCrop = (video, settings) => {
         });
 
         document.addEventListener('keypress', (e) => {
-            if (!video.src) return;
+            if (!video.innerHTML.trim()) return;
 
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;

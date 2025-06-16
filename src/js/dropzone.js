@@ -4,7 +4,6 @@ const { convertFileSrc, invoke } = window.__TAURI__.core;
 export const setupDropZone = (video, dropContainer, metadata) => {
     const $ = document.querySelector.bind(document);
     const dropZone = $(".drop-zone");
-    const dropError = $('#dropError');
     const videoWrapper = $('.video-wrapper');
     const clickableArea = $('.clickable-area');
 
@@ -41,8 +40,13 @@ export const setupDropZone = (video, dropContainer, metadata) => {
             const wasPlaying = !video.paused;
             
             const fileObject = await createFileObject(path);
-            video.src = convertFileSrc(fileObject.path);
+
+            video.innerHTML = '';
+            const element = document.createElement('source');
+            element.src = convertFileSrc(fileObject.path);
+            video.appendChild(element);
             video.focus();
+
             setAddMedia(false);
 
             const videoLoadEvent = new CustomEvent('videoFileLoaded', { 
@@ -65,9 +69,11 @@ export const setupDropZone = (video, dropContainer, metadata) => {
                     }
                 }
             }, { once: true });
+
+            video.load();
         } catch (error) {
             window.showNotification("Failed to load video file", "error");
-            video.src = null;
+            video.innerHTML = '';
             dropContainer.classList.add('add-media');
         }
     };

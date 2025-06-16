@@ -320,29 +320,11 @@ pub async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutpu
 }
 
 #[tauri::command]
-pub async fn get_yt_video_info(app: AppHandle, url: String) -> Result<YtVideoInfo, String> {
-    let ytdlp_path = get_binary_path(&app, "yt-dlp");
-    let output = Command::new(ytdlp_path)
-        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .args(["-j", "--no-playlist", &url])
-        .output()
-        .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
-    }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    serde_json::from_str(&output_str)
-        .map_err(|e| format!("Failed to parse yt-dlp output: {}", e))
-}
-
-#[tauri::command]
-pub async fn get_best_streaming_url(
+pub async fn get_streaming_url(
     app: AppHandle,
     url: String,
     format_preference: Option<String>,
-) -> Result<String, String> {
+) -> Result<YtVideoInfoWithUrl, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let mut cmd = Command::new(ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
@@ -354,16 +336,22 @@ pub async fn get_best_streaming_url(
         cmd.args(["-f", "b"]);
     }
 
-    cmd.args(["--get-url", &url]);
-    let output = cmd
-        .output()
+    cmd.args(["-j", "--get-url", &url]);
+    let output = cmd.output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).into_owned());
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    let (urls, info) = {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let mut lines: Vec<String> = output_str.lines().map(str::to_string).collect();
+        let info_json = lines.pop().unwrap_or_else(|| "{}".to_string());
+        let info = serde_json::from_str(&info_json).map_err(|e| e.to_string())?;
+        (lines, info)
+    };
+    Ok(YtVideoInfoWithUrl{ urls, info })
 }
 
 #[tauri::command]

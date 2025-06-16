@@ -59,10 +59,9 @@ export const setupTrim = (video, metadata) => {
             isDragging = true;
             e.stopPropagation();
             
-            // Create preview video element once
             const previewVideo = document.createElement('video');
             previewVideo.className = 'trim-preview-video';
-            previewVideo.src = video.src;
+            previewVideo.src = video.children[0].src;
             previewVideo.muted = true;
             
             const handleDrag = async (e) => {
@@ -84,7 +83,6 @@ export const setupTrim = (video, metadata) => {
                 
                 updateTrimRegion();
                 
-                // Update hover display with preview
                 progressHover.innerHTML = '';
                 progressHover.appendChild(previewVideo);
                 
@@ -169,7 +167,7 @@ export const setupTrim = (video, metadata) => {
     };
     
     const handleTrimKeyboard = (e) => {
-        if (!video.src) return;
+        if (!video.innerHTML.trim()) return;
         
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return;

@@ -118,6 +118,12 @@ pub struct YtVideoInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct YtVideoInfoWithUrl {
+    pub urls: Vec<String>,
+    pub info: YtVideoInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Format {
     pub format_id: String,
     pub url: String,

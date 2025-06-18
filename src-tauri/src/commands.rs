@@ -377,6 +377,7 @@ pub async fn get_streaming_url(
 #[tauri::command]
 pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearchResult>, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp").expect("Failed to get yt-dlp path");
+    let ytdlp_path = get_binary_path(&app, "yt-dlp").expect("Failed to get yt-dlp path");
 
     let format_string = "%(title)s<=|>#<%(url)s<=|>#<%(uploader)s<=|>#<%(duration_string)s<=|>#<%(view_count)s<=|>#<%(id)s";
 

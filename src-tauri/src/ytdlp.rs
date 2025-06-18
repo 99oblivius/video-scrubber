@@ -1,8 +1,5 @@
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 use crate::models::QueueProgress;
-use crate::utils::{get_binary_path, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW};
+use crate::utils::{create_command, get_binary_path};
 use std::{
     io::{BufRead, BufReader},
     process::{Command, Stdio},
@@ -46,9 +43,8 @@ pub fn build_ytdlp_command(app: &AppHandle, url: &str, output_path: &str, ext: &
     let ytdlp_path = get_binary_path(app, "yt-dlp").expect("Failed to get yt-dlp path");
     let ffmpeg_path = get_binary_path(app, "ffmpeg").expect("Failed to get ffmpeg path");
 
-    let mut cmd = Command::new(&ytdlp_path);
-    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::null())
+    let mut cmd = create_command(ytdlp_path);
+    cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .args([

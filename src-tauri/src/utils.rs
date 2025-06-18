@@ -1,9 +1,29 @@
-use std::fs;
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::PathBuf,
+    process::Command,
+};
 use tauri::{AppHandle, Manager};
 
-pub const CREATE_NO_WINDOW: u32 = 0x08000000;
-pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+pub fn create_command(binary_path: PathBuf) -> Command {
+    let mut cmd = Command::new(binary_path);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+        cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+
+    cmd
+}
 
 pub fn get_binary_path(app: &AppHandle, binary: &str) -> Result<PathBuf, std::io::Error> {
     let bin_name = if cfg!(windows) {
@@ -18,7 +38,7 @@ pub fn get_binary_path(app: &AppHandle, binary: &str) -> Result<PathBuf, std::io
         .expect("Failed to get resource dir")
         .join("resources")
         .join("bin");
-    
+
     fs::create_dir_all(&path)?;
 
     Ok(path.join(bin_name))

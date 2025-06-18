@@ -99,9 +99,9 @@ pub async fn wait_for_process(
 
 #[cfg(target_os = "windows")]
 pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
-    use crate::utils::CREATE_NO_WINDOW;
     use std::os::windows::process::CommandExt;
     use std::process::Command;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
 
     Command::new("taskkill")
         .args(["/F", "/T", "/PID", &pid.to_string()])
@@ -114,9 +114,9 @@ pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
 #[cfg(not(target_os = "windows"))]
 pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
     use std::process::Command;
-
-    Command::new("pkill")
-        .args(["-TERM", "-P", &pid.to_string()])
+    let pgid = pid.to_string();
+    Command::new("kill")
+        .args(["-TERM", &format!("-{}", pgid)])
         .output()
         .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
     Ok(())

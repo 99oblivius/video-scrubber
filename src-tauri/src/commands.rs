@@ -1,6 +1,3 @@
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 use crate::ffmpeg::{build_ffmpeg_command, monitor_ffmpeg_progress};
 use crate::models::*;
 use crate::process::PROCESSES;
@@ -9,7 +6,7 @@ use crate::process::{
 };
 use crate::temp::{cleanup_temp_files, ensure_temp_dir};
 use crate::utils::{
-    get_binary_path, parse_video_dimensions, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW,
+    create_command, get_binary_path, parse_video_dimensions,
 };
 use crate::ytdlp::{build_ytdlp_command, monitor_ytdlp_progress};
 use regex::Regex;
@@ -260,8 +257,7 @@ async fn process_with_ffmpeg(
 
 fn get_video_dimensions(app: &AppHandle, path: &str) -> Result<(u32, u32), String> {
     let ffmpeg_path = get_binary_path(app, "ffprobe").expect("Failed to get ffprobe path");
-    let output = Command::new(&ffmpeg_path)
-        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+    let output = create_command(ffmpeg_path)
         .args([
             "-v",
             "quiet",
@@ -319,8 +315,7 @@ fn adjust_crop_settings(
 #[tauri::command]
 pub async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, String> {
     let ffmpeg_path = get_binary_path(&app, "ffprobe").expect("Failed to get ffprobe path");
-    let output = Command::new(&ffmpeg_path)
-        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+    let output = create_command(ffmpeg_path)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -350,9 +345,8 @@ pub async fn get_streaming_url(
     format_preference: String,
 ) -> Result<YtVideoInfoWithUrl, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp").expect("Failed to get yt-dlp path");
-    let mut cmd = Command::new(&ytdlp_path);
-    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .args([
+    let mut cmd = create_command(ytdlp_path);
+    cmd.args([
             "-j",
             "--no-playlist",
             "-f",
@@ -386,9 +380,8 @@ pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearc
 
     let format_string = "%(title)s<=|>#<%(url)s<=|>#<%(uploader)s<=|>#<%(duration_string)s<=|>#<%(view_count)s<=|>#<%(id)s";
 
-    let mut cmd = Command::new(&ytdlp_path);
-    cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .args([
+    let mut cmd = create_command(ytdlp_path);
+    cmd.args([
             "--print",
             format_string,
             "--no-simulate",
@@ -465,8 +458,7 @@ pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearc
 #[tauri::command]
 pub async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp").expect("Failed to get yt-dlp path");
-    let output = Command::new(&ytdlp_path)
-        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+    let output = create_command(ytdlp_path)
         .arg("--version")
         .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
@@ -481,8 +473,7 @@ pub async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 pub async fn check_ffmpeg_version(app: AppHandle) -> Result<String, String> {
     let ffmpeg_path = get_binary_path(&app, "ffmpeg").expect("Failed to get ffmpeg path");
-    let output = Command::new(&ffmpeg_path)
-        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+    let output = create_command(ffmpeg_path)
         .arg("-version")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

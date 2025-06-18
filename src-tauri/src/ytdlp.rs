@@ -4,9 +4,9 @@ use std::os::windows::process::CommandExt;
 use crate::models::QueueProgress;
 use crate::utils::{get_binary_path, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW};
 use std::{
-    thread,
+    io::{BufRead, BufReader},
     process::{Command, Stdio},
-    io::{BufRead, BufReader}
+    thread,
 };
 use tauri::{AppHandle, Emitter};
 
@@ -42,24 +42,27 @@ pub fn parse_ytdlp_progress(line: &str) -> Option<(f64, Option<String>, Option<S
     None
 }
 
-pub fn build_ytdlp_command(
-    app: &AppHandle,
-    url: &str,
-    output_path: &str,
-    ext: &str,
-) -> Command {
+pub fn build_ytdlp_command(app: &AppHandle, url: &str, output_path: &str, ext: &str) -> Command {
     let ytdlp_path = get_binary_path(app, "yt-dlp");
     let ffmpeg_path = get_binary_path(app, "ffmpeg");
 
     let mut cmd = Command::new(&ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .args([
-            "-f", "bv*+ba/b",
-            "-o", output_path,
-            "--ffmpeg-location", &ffmpeg_path.to_string_lossy().to_string(),
-            "--remux-video", ext,
-            "--no-playlist", "--progress", "--newline",
+            "-f",
+            "bv*+ba/b",
+            "-o",
+            output_path,
+            "--ffmpeg-location",
+            &ffmpeg_path.to_string_lossy().to_string(),
+            "--remux-video",
+            ext,
+            "--no-playlist",
+            "--progress",
+            "--newline",
         ]);
 
     cmd.arg(url);
@@ -83,10 +86,10 @@ pub fn monitor_ytdlp_progress(
                     current_size: None,
                     total_size: None,
                 };
-                
+
                 // Update stored progress
                 crate::process::update_queue_progress(&queue_id, &queue_progress);
-                
+
                 let _ = app.emit("queue-progress", queue_progress);
             }
         }

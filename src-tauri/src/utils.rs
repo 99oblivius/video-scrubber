@@ -10,7 +10,9 @@ pub fn get_binary_path(app: &AppHandle, binary: &str) -> PathBuf {
     } else {
         binary.to_string()
     };
-    app.path().resource_dir().expect("Failed to get resource dir")
+    app.path()
+        .resource_dir()
+        .expect("Failed to get resource dir")
         .join("resources")
         .join("bin")
         .join(bin_name)
@@ -22,9 +24,11 @@ pub fn parse_video_dimensions(dimensions_str: &str) -> Result<(u32, u32), String
         return Err(format!("Invalid dimension format: {}", dimensions_str));
     }
 
-    let width = parts[0].parse()
+    let width = parts[0]
+        .parse()
         .map_err(|_| format!("Invalid width: {}", parts[0]))?;
-    let height = parts[1].parse()
+    let height = parts[1]
+        .parse()
         .map_err(|_| format!("Invalid height: {}", parts[1]))?;
 
     Ok((width, height))

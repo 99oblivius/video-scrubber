@@ -1,9 +1,9 @@
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-use crate::process::PROCESSES;
 use crate::ffmpeg::{build_ffmpeg_command, monitor_ffmpeg_progress};
 use crate::models::*;
+use crate::process::PROCESSES;
 use crate::process::{
     register_process, terminate_process_tree, unregister_process, wait_for_process,
 };
@@ -12,18 +12,17 @@ use crate::utils::{
     get_binary_path, parse_video_dimensions, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW,
 };
 use crate::ytdlp::{build_ytdlp_command, monitor_ytdlp_progress};
+use regex::Regex;
 use std::{
+    io::{BufReader, Read, Write},
     path::Path,
     process::{Command, Stdio},
     thread,
-    io::{BufReader, Read, Write}
 };
-use regex::Regex;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 pub async fn terminate_process(queue_id: String) -> Result<(), String> {
-    
     let process_info = unregister_process(&queue_id);
 
     if let Some(info) = process_info {
@@ -70,8 +69,10 @@ pub async fn save_video(
 
     let temp_dir = ensure_temp_dir()?;
 
-    let output_ext = Path::new(&operation.output.path).extension()
-        .and_then(|e| e.to_str()).unwrap();
+    let output_ext = Path::new(&operation.output.path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap();
     let temp_file = temp_dir.join(format!("{}.{}", queue_id, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
@@ -87,12 +88,8 @@ pub async fn save_video(
     };
 
     let mut cmd = build_ffmpeg_command(&app, &temp_operation);
-    let mut child = cmd.spawn()
-        .map_err(|e| format!("FFmpeg error: {}", e))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or("Failed to capture stderr")?;
+    let mut child = cmd.spawn().map_err(|e| format!("FFmpeg error: {}", e))?;
+    let stdout = child.stdout.take().ok_or("Failed to capture stderr")?;
 
     let output_filename = Path::new(&operation.output.path)
         .file_name()
@@ -104,9 +101,9 @@ pub async fn save_video(
 
     let reader = BufReader::new(stdout);
     monitor_ffmpeg_progress(
-        reader, 
-        queue_id.clone(), 
-        app.clone(), 
+        reader,
+        queue_id.clone(),
+        app.clone(),
         total_duration,
         operation.changes.trim.clone(),
     );
@@ -137,26 +134,27 @@ pub async fn process_remote_video(
 
     let temp_dir = ensure_temp_dir()?;
 
-    let output_ext = Path::new(&operation.output.path).extension()
-        .and_then(|e| e.to_str()).unwrap_or("mp4");
+    let output_ext = Path::new(&operation.output.path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("mp4");
     let temp_file = temp_dir.join(format!("{}.{}", queue_id, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
     // Download with yt-dlp
-    let mut ytdlp_cmd = build_ytdlp_command(
-        &app,
-        &operation.source.path,
-        &temp_path,
-        output_ext,
-    );
+    let mut ytdlp_cmd = build_ytdlp_command(&app, &operation.source.path, &temp_path, output_ext);
 
-    let mut child = ytdlp_cmd.spawn()
+    let mut child = ytdlp_cmd
+        .spawn()
         .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
 
-    let output_filename = Path::new(&operation.output.path).file_name()
-        .and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
+    let output_filename = Path::new(&operation.output.path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
 
     let child_arc = register_process(queue_id.clone(), child, false, output_filename);
 
@@ -169,7 +167,9 @@ pub async fn process_remote_video(
     if !download_exit_status.success() {
         let mut reader = BufReader::new(stderr);
         let mut stderr_output = String::new();
-        reader.read_to_string(&mut stderr_output).expect("Failed to read stderr");
+        reader
+            .read_to_string(&mut stderr_output)
+            .expect("Failed to read stderr");
 
         let error_message = format!(
             "Download failed (exit code: {:?}): {:?}",
@@ -225,22 +225,25 @@ async fn process_with_ffmpeg(
 ) -> Result<(), String> {
     let total_duration = operation.source.duration;
 
-    let output_filename = Path::new(&operation.output.path).file_name()
-        .and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
+    let output_filename = Path::new(&operation.output.path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
 
     let mut cmd = build_ffmpeg_command(&app, &operation);
-    let mut child = cmd.spawn()
+    let mut child = cmd
+        .spawn()
         .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
-    let stdout = child.stdout.take()
-        .ok_or("Failed to capture stdout")?;
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
 
     let child_arc = register_process(queue_id.clone(), child, true, output_filename);
 
     let reader = BufReader::new(stdout);
     monitor_ffmpeg_progress(
-        reader, 
-        queue_id.clone(), 
-        app.clone(), 
+        reader,
+        queue_id.clone(),
+        app.clone(),
         total_duration,
         operation.changes.trim.clone(),
     );
@@ -259,13 +262,18 @@ fn get_video_dimensions(app: &AppHandle, path: &str) -> Result<(u32, u32), Strin
     let output = Command::new(get_binary_path(app, "ffprobe"))
         .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .args([
-            "-v", "quiet",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=s=x:p=0",
+            "-v",
+            "quiet",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=s=x:p=0",
             path,
         ])
-        .output().map_err(|e| format!("Failed to get video dimensions: {}", e))?;
+        .output()
+        .map_err(|e| format!("Failed to get video dimensions: {}", e))?;
 
     if !output.status.success() {
         return Err("FFprobe dimension query failed".to_string());
@@ -289,8 +297,7 @@ fn adjust_crop_settings(
         crop.width = ((crop.width as f64 * width_scale).round() as u32).max(2);
         crop.height = ((crop.height as f64 * height_scale).round() as u32).max(2);
         crop.x = ((crop.x as f64 * width_scale).round() as u32).min(actual_width - crop.width);
-        crop.y =
-            ((crop.y as f64 * height_scale).round() as u32).min(actual_height - crop.height);
+        crop.y = ((crop.y as f64 * height_scale).round() as u32).min(actual_height - crop.height);
 
         // Ensure even values for codec compatibility
         crop.width &= !1;
@@ -312,22 +319,26 @@ fn adjust_crop_settings(
 pub async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutput, String> {
     let output = Command::new(get_binary_path(&app, "ffprobe"))
         .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .args([
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_streams",
             &path,
         ])
-        .output().map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
+        .output()
+        .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
 
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).into_owned());
     }
 
     let output_str = String::from_utf8_lossy(&output.stdout);
-    serde_json::from_str(&output_str)
-        .map_err(|e| format!("Failed to parse ffprobe output: {}", e))
+    serde_json::from_str(&output_str).map_err(|e| format!("Failed to parse ffprobe output: {}", e))
 }
 
 #[tauri::command]
@@ -342,13 +353,15 @@ pub async fn get_streaming_url(
         .args([
             "-j",
             "--no-playlist",
-            "-f", &format_preference,
+            "-f",
+            &format_preference,
             "--get-url",
             "--hls-prefer-native",
             "--no-check-certificate",
             &url,
         ]);
-    let output = cmd.output()
+    let output = cmd
+        .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
     if !output.status.success() {
@@ -362,56 +375,59 @@ pub async fn get_streaming_url(
         let info = serde_json::from_str(&info_json).map_err(|e| e.to_string())?;
         (lines, info)
     };
-    Ok(YtVideoInfoWithUrl{ urls, info })
+    Ok(YtVideoInfoWithUrl { urls, info })
 }
 
 #[tauri::command]
 pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearchResult>, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
-    
+
     let format_string = "%(title)s<=|>#<%(url)s<=|>#<%(uploader)s<=|>#<%(duration_string)s<=|>#<%(view_count)s<=|>#<%(id)s";
-    
+
     let mut cmd = Command::new(ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .args([
-            "--print", format_string,
+            "--print",
+            format_string,
             "--no-simulate",
-            "--skip-download", 
+            "--skip-download",
             "--flat-playlist",
             "--ignore-errors",
             "--quiet",
             "--no-warnings",
-            "--encoding", "utf-8",
-            "--default-search", "ytsearch",
-            &format!("ytsearch10:{}", query)
+            "--encoding",
+            "utf-8",
+            "--default-search",
+            "ytsearch",
+            &format!("ytsearch10:{}", query),
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
-    
+
     cmd.env("PYTHONIOENCODING", "utf-8")
-       .env("LANG", "en_US.UTF-8")
-       .env("LC_ALL", "en_US.UTF-8");
-    
-    let output = cmd.output()
+        .env("LANG", "en_US.UTF-8")
+        .env("LC_ALL", "en_US.UTF-8");
+
+    let output = cmd
+        .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
     if !output.status.success() {
         return Ok(vec![]);
     }
 
-    let output_str = String::from_utf8(output.stdout)
-        .unwrap_or_else(|e| {
-            eprintln!("UTF-8 parsing failed: {}", e);
-            String::from_utf8_lossy(&e.into_bytes()).into_owned()
-        });
-    
+    let output_str = String::from_utf8(output.stdout).unwrap_or_else(|e| {
+        eprintln!("UTF-8 parsing failed: {}", e);
+        String::from_utf8_lossy(&e.into_bytes()).into_owned()
+    });
+
     let mut results = Vec::new();
-    
+
     for line in output_str.lines() {
         if line.trim().is_empty() {
             continue;
         }
-        
+
         let parts: Vec<&str> = line.split("<=|>#<").collect();
         if parts.len() >= 6 {
             let result = YtSearchResult {
@@ -434,13 +450,13 @@ pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearc
                     None
                 },
             };
-            
+
             if !result.url.is_empty() {
                 results.push(result);
             }
         }
     }
-    
+
     Ok(results)
 }
 
@@ -502,7 +518,9 @@ pub fn get_queue_state() -> Vec<crate::process::QueueItemInfo> {
 
 #[tauri::command]
 pub fn update_window_title(app: AppHandle, title: String) -> Result<(), String> {
-    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
     window.set_title(&title).map_err(|e| e.to_string())?;
     Ok(())
 }

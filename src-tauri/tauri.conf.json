@@ -37,6 +37,7 @@
     "targets": "all",
     "category": "GraphicsAndDesign",
     "shortDescription": "Livideo",
+    "createUpdaterArtifacts": true,
     "resources": [
       "resources/**/*"
     ],
@@ -62,6 +63,17 @@
         "type": "downloadBootstrapper"
       },
       "wix": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "windows": {
+        "installMode": "passive"
+      },
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/99oblivius/Livideo/releases/latest/download/latest.json"
+      ]
     }
   }
 }

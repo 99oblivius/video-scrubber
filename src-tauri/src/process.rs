@@ -1,4 +1,5 @@
 use crate::models::QueueProgress;
+use crate::temp::cleanup_temp_files;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -6,7 +7,6 @@ use std::io::Write;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use crate::temp::cleanup_temp_files;
 
 pub struct ProcessHandle {
     pub child: Child,
@@ -46,7 +46,7 @@ pub fn register_process(
         speed: None,
         eta: None,
     }));
-    
+
     let info = ProcessInfo {
         handle: handle.clone(),
         queue_info,
@@ -71,7 +71,10 @@ pub fn update_queue_progress(queue_id: &str, progress: &QueueProgress) {
 }
 
 pub fn get_all_queue_items() -> Vec<QueueItemInfo> {
-    PROCESSES.lock().unwrap().values()
+    PROCESSES
+        .lock()
+        .unwrap()
+        .values()
         .map(|info| info.queue_info.lock().unwrap().clone())
         .collect()
 }
@@ -96,14 +99,15 @@ pub async fn wait_for_process(
 
 #[cfg(target_os = "windows")]
 pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
-    use crate::utils::{CREATE_NO_WINDOW};
-    use std::process::Command;
+    use crate::utils::CREATE_NO_WINDOW;
     use std::os::windows::process::CommandExt;
+    use std::process::Command;
 
     Command::new("taskkill")
         .args(["/F", "/T", "/PID", &pid.to_string()])
         .creation_flags(CREATE_NO_WINDOW)
-        .output().map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+        .output()
+        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
     Ok(())
 }
 
@@ -113,7 +117,8 @@ pub fn terminate_process_tree(pid: u32) -> Result<(), String> {
 
     Command::new("pkill")
         .args(["-TERM", "-P", &pid.to_string()])
-        .output().map_err(|e| format!("Failed to terminate process tree: {}", e))?;
+        .output()
+        .map_err(|e| format!("Failed to terminate process tree: {}", e))?;
     Ok(())
 }
 
@@ -122,14 +127,14 @@ pub fn terminate_process_with_cleanup(
     queue_id: &str,
 ) -> Result<(), String> {
     let pid = handle.child.id();
-    
+
     if handle.is_ffmpeg {
         if let Some(mut stdin) = handle.child.stdin.take() {
             let _ = stdin.write_all(b"q");
             let _ = stdin.flush();
             drop(stdin);
             thread::sleep(std::time::Duration::from_millis(100));
-            
+
             if let Ok(None) = handle.child.try_wait() {
                 let queue_id_clone = queue_id.to_string();
                 let _ = terminate_process_tree(pid);
@@ -140,7 +145,7 @@ pub fn terminate_process_with_cleanup(
             return Ok(());
         }
     }
-    
+
     let _ = terminate_process_tree(pid);
     let _ = cleanup_temp_files(queue_id);
     Ok(())

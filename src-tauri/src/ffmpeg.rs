@@ -1,13 +1,13 @@
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use std::time::{Instant};
+use std::time::Instant;
 
 use crate::models::{QueueProgress, SaveOperation, TrimSettings};
 use crate::utils::{get_binary_path, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW};
 use std::{
-    thread,
+    io::{BufRead, BufReader},
     process::{Command, Stdio},
-    io::{BufRead, BufReader}
+    thread,
 };
 use tauri::{AppHandle, Emitter};
 
@@ -37,11 +37,15 @@ pub fn get_audio_codec_param(codec: &str) -> &'static str {
 pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
     let mut cmd = Command::new(get_binary_path(app, "ffmpeg"));
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .args([
-            "-progress", "pipe:1", 
-            "-nostats", 
-            "-i", &operation.source.path
+            "-progress",
+            "pipe:1",
+            "-nostats",
+            "-i",
+            &operation.source.path,
         ]);
 
     if let Some(trim) = &operation.changes.trim {
@@ -53,17 +57,17 @@ pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Comma
         let video_codec = get_video_codec_param(&compression.video_codec);
         let audio_codec = get_audio_codec_param(&compression.audio_codec);
         cmd.args([
-            "-c:v", video_codec, 
-            "-c:a", audio_codec, 
-            "-crf", &compression.quality.to_string()
+            "-c:v",
+            video_codec,
+            "-c:a",
+            audio_codec,
+            "-crf",
+            &compression.quality.to_string(),
         ]);
     }
 
     if let Some(crop) = &operation.changes.crop {
-        let filter = format!(
-            "crop={}:{}:{}:{}",
-            crop.width, crop.height, crop.x, crop.y
-        );
+        let filter = format!("crop={}:{}:{}:{}", crop.width, crop.height, crop.x, crop.y);
         cmd.arg("-vf").arg(filter);
     }
 
@@ -80,48 +84,43 @@ pub fn monitor_ffmpeg_progress(
 ) {
     thread::spawn(move || {
         let start_time = Instant::now();
-        
-        // Calculate actual duration based on trim settings
+
         let actual_duration = if let Some(trim) = &trim_settings {
             trim.end_time - trim.start_time
         } else {
             total_duration
         };
-        
+
         for line in reader.lines().filter_map(Result::ok) {
             if let Some(time_us) = parse_ffmpeg_time(&line) {
                 let current_time = time_us as f64 / 1_000_000.0;
-                
-                // Adjust progress calculation for trimmed videos
+
                 let progress = if let Some(_trim) = &trim_settings {
-                    // When trimming, FFmpeg outputs time relative to trim start
                     ((current_time) / actual_duration) * 100.0
                 } else {
                     (current_time / actual_duration) * 100.0
                 };
-                
+
                 let progress = progress.clamp(0.0, 100.0);
-                
+
                 let elapsed = start_time.elapsed().as_secs_f64();
-                
-                // Calculate processing speed
+
                 let speed = if elapsed > 0.0 && actual_duration > 0.0 {
                     format!("{:.1}x", (current_time / elapsed))
                 } else {
                     String::new()
                 };
-                
-                // Calculate ETA
+
                 let eta = if progress > 0.0 && progress < 100.0 && elapsed > 0.0 {
                     let rate = progress / elapsed;
                     let remaining_progress = 100.0 - progress;
                     let eta_seconds = (remaining_progress / rate) as u64;
-                    
+
                     format_duration(eta_seconds)
                 } else {
                     String::new()
                 };
-                
+
                 let queue_progress = QueueProgress {
                     queue_id: queue_id.clone(),
                     progress,
@@ -131,7 +130,7 @@ pub fn monitor_ffmpeg_progress(
                     current_size: None,
                     total_size: None,
                 };
-                
+
                 crate::process::update_queue_progress(&queue_id, &queue_progress);
                 let _ = app.emit("queue-progress", queue_progress);
             }
@@ -139,7 +138,6 @@ pub fn monitor_ffmpeg_progress(
     });
 }
 
-// Helper function to parse time from FFmpeg progress
 fn parse_ffmpeg_time(line: &str) -> Option<i64> {
     if line.starts_with("out_time_us=") {
         let time_str = &line[12..];
@@ -150,7 +148,6 @@ fn parse_ffmpeg_time(line: &str) -> Option<i64> {
     None
 }
 
-// Helper function to format duration
 fn format_duration(seconds: u64) -> String {
     if seconds < 60 {
         format!("{}s", seconds)

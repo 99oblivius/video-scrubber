@@ -16,9 +16,10 @@ use std::{
     path::Path,
     process::{Command, Stdio},
     thread,
-    io::{BufReader, Write}
+    io::{BufReader, Read, Write}
 };
-use tauri::{AppHandle, Manager};
+use regex::Regex;
+use tauri::{AppHandle, Emitter, Manager};
 
 #[tauri::command]
 pub async fn terminate_process(queue_id: String) -> Result<(), String> {
@@ -152,6 +153,7 @@ pub async fn process_remote_video(
     let mut child = ytdlp_cmd.spawn()
         .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
 
     let output_filename = Path::new(&operation.output.path).file_name()
         .and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
@@ -165,7 +167,16 @@ pub async fn process_remote_video(
     unregister_process(&queue_id);
 
     if !download_exit_status.success() {
-        return Err("Download failed or was cancelled".to_string());
+        let mut reader = BufReader::new(stderr);
+        let mut stderr_output = String::new();
+        reader.read_to_string(&mut stderr_output).expect("Failed to read stderr");
+
+        let error_message = format!(
+            "Download failed (exit code: {:?}): {:?}",
+            download_exit_status.code(),
+            stderr_output
+        );
+        return Err(error_message);
     }
 
     // Get actual video dimensions
@@ -323,20 +334,20 @@ pub async fn get_video_info(app: AppHandle, path: String) -> Result<FFprobeOutpu
 pub async fn get_streaming_url(
     app: AppHandle,
     url: String,
-    format_preference: Option<String>,
+    format_preference: String,
 ) -> Result<YtVideoInfoWithUrl, String> {
     let ytdlp_path = get_binary_path(&app, "yt-dlp");
     let mut cmd = Command::new(ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
-        .arg("--no-playlist");
-
-    if let Some(format) = format_preference {
-        cmd.args(["-f", &format]);
-    } else {
-        cmd.args(["-f", "b"]);
-    }
-
-    cmd.args(["-j", "--get-url", &url]);
+        .args([
+            "-j",
+            "--no-playlist",
+            "-f", &format_preference,
+            "--get-url",
+            "--hls-prefer-native",
+            "--no-check-certificate",
+            &url,
+        ]);
     let output = cmd.output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
@@ -447,6 +458,34 @@ pub async fn check_ytdlp_version(app: AppHandle) -> Result<String, String> {
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[tauri::command]
+pub async fn check_ffmpeg_version(app: AppHandle) -> Result<String, String> {
+    let ffmpeg_path = get_binary_path(&app, "ffmpeg");
+    let output = Command::new(&ffmpeg_path)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
+        .arg("-version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to execute ffmpeg: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let first_line = stdout.lines().next().unwrap_or("").trim();
+
+    let re = Regex::new(r"ffmpeg version ([0-9]+(?:\.[0-9]+)*)").unwrap();
+    if let Some(caps) = re.captures(first_line) {
+        if let Some(version) = caps.get(1) {
+            return Ok(version.as_str().to_string());
+        }
+    }
+
+    Err("Could not parse ffmpeg version".to_string())
 }
 
 #[tauri::command]

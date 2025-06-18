@@ -8,6 +8,7 @@ version = "0.2.0"
 dependencies = [
  "futures",
  "once_cell",
+ "regex",
  "serde",
  "serde_json",
  "tauri",

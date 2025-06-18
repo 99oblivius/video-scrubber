@@ -55,9 +55,9 @@ pub fn build_ytdlp_command(
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
         .args([
-            "-f", "bv*+ba/best",
+            "-f", "bv*+ba/b",
             "-o", output_path,
-            "--ffmpeg-location", &ffmpeg_path.to_string_lossy(),
+            "--ffmpeg-location", &ffmpeg_path.to_string_lossy().to_string(),
             "--remux-video", ext,
             "--no-playlist", "--progress", "--newline",
         ]);

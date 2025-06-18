@@ -30,6 +30,7 @@ fn main() {
             commands::process_remote_video,
             commands::get_streaming_url,
             commands::check_ytdlp_version,
+            commands::check_ffmpeg_version,
             commands::show_app_window,
             commands::terminate_process,
             commands::get_queue_state,

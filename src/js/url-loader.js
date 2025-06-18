@@ -71,7 +71,7 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
             
             const { urls: streamingUrls, info: videoInfo } = await invoke('get_streaming_url', { 
                 url, 
-                format_preference: 'bv[height<=1080]*+ba/b' 
+                formatPreference: 'b' 
             });
 
             const lastFormat = videoInfo.formats?.[videoInfo.formats.length - 1];

@@ -35,7 +35,8 @@ pub fn get_audio_codec_param(codec: &str) -> &'static str {
 }
 
 pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Command {
-    let mut cmd = Command::new(get_binary_path(app, "ffmpeg"));
+    let ffmpeg_path = get_binary_path(app, "ffmpeg").expect("Failed to get ffmpeg path");
+    let mut cmd = Command::new(&ffmpeg_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

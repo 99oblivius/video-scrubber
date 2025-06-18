@@ -1,21 +1,27 @@
+use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;
 pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
 
-pub fn get_binary_path(app: &AppHandle, binary: &str) -> PathBuf {
+pub fn get_binary_path(app: &AppHandle, binary: &str) -> Result<PathBuf, std::io::Error> {
     let bin_name = if cfg!(windows) {
         format!("{}.exe", binary)
     } else {
         binary.to_string()
     };
-    app.path()
+
+    let path = app
+        .path()
         .resource_dir()
         .expect("Failed to get resource dir")
         .join("resources")
-        .join("bin")
-        .join(bin_name)
+        .join("bin");
+    
+    fs::create_dir_all(&path)?;
+
+    Ok(path.join(bin_name))
 }
 
 pub fn parse_video_dimensions(dimensions_str: &str) -> Result<(u32, u32), String> {

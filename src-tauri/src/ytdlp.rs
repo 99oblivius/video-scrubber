@@ -43,8 +43,8 @@ pub fn parse_ytdlp_progress(line: &str) -> Option<(f64, Option<String>, Option<S
 }
 
 pub fn build_ytdlp_command(app: &AppHandle, url: &str, output_path: &str, ext: &str) -> Command {
-    let ytdlp_path = get_binary_path(app, "yt-dlp");
-    let ffmpeg_path = get_binary_path(app, "ffmpeg");
+    let ytdlp_path = get_binary_path(app, "yt-dlp").expect("Failed to get yt-dlp path");
+    let ffmpeg_path = get_binary_path(app, "ffmpeg").expect("Failed to get ffmpeg path");
 
     let mut cmd = Command::new(&ytdlp_path);
     cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP)

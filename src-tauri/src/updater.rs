@@ -601,9 +601,9 @@ fn extract_single_binary_zip(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&out_path)?.permissions();
+        let mut perms = fs::metadata(&out_path).expect("File permissions not found").permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&out_path, perms)?;
+        fs::set_permissions(&out_path, perms).expect("File persmissions could not be set");
     }
     Ok(())
 }

@@ -1,12 +1,43 @@
 use crate::models::{BinaryInfo, BinaryUpdateProgress};
 use crate::utils::{create_command, get_binary_path};
 use regex::Regex;
-use std::{fs, io::{BufRead, Read}, path::Path, process::Stdio};
+use std::{fs, io::{BufRead, Read}, path::Path};
 use tauri::{AppHandle, Emitter, Manager};
 use sha2::{Digest, Sha256};
 
 const YTDLP_HASH_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
+#[cfg(target_os = "windows")]
+
+const YTDLP_WINDOWS_BINARY_URL: &str =
+    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+const YTDLP_LINUX_X86_BINARY_URL: &str =
+    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+const YTDLP_LINUX_ARCH_BINARY_URL: &str =
+    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64";
+#[cfg(target_os = "macos")]
+const YTDLP_MACOS_BINARY_URL: &str =
+    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos";
+
+const FFMPEG_VERSION_URL: &str =
+    "https://www.gyan.dev/ffmpeg/builds/release-version";
+
+#[cfg(target_os = "windows")]
+const FFMPEG_WINDOWS_BINARY_URL: &str =
+    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+#[cfg(target_os = "macos")]
+const FFMPEG_MACOS_BINARY_URL: &str =
+    "https://evermeet.cx/ffmpeg/getrelease/ffmpeg";
+#[cfg(target_os = "macos")]
+const FFPROBE_MACOS_BINARY_URL: &str =
+    "https://evermeet.cx/ffmpeg/getrelease/ffprobe";
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+const FFMPEG_LINUX_BINARY_URL: &str =
+    "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+
+
 
 pub async fn check_binary_status(
     app: &AppHandle,
@@ -105,9 +136,7 @@ async fn get_installed_version(
 async fn get_latest_version(binary_name: &str) -> Result<Option<String>, String> {
     match binary_name {
         "ffmpeg" | "ffprobe" => {
-            let response = reqwest::get(
-                "https://www.gyan.dev/ffmpeg/builds/release-version",
-            )
+            let response = reqwest::get(FFMPEG_VERSION_URL)
             .await
             .map_err(|e| format!("Failed to fetch latest version: {}", e))?;
 
@@ -129,19 +158,28 @@ fn versions_match(current: &str, latest: &str) -> bool {
 
 pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
     let ytdlp_path = get_binary_path(app, "yt-dlp")
-        .map_err(|e| format!("Failed to get yt-dlp path: {}", e))?;
+        .map_err(|e| format!("Failed to get path: {}", e))?;
     let platform_filename = get_ytdlp_filename();
     let download_url = get_ytdlp_download_url()?;
 
     if !ytdlp_path.exists() {
-        emit_progress(app, "yt-dlp", 5.0, "downloading", Some("Downloading yt-dlp..."));
+        emit_progress(app, "yt-dlp", 5.0, "downloading", Some("Downloading..."));
+        
         let temp_dir = crate::temp::ensure_temp_dir()?;
         let temp_path = temp_dir.join(platform_filename);
 
-        download_file(&download_url, &temp_path, |_| {}).await?;
+        // Download with progress tracking
+        download_file_with_progress(
+            &download_url,
+            &temp_path,
+            app,
+            "yt-dlp",
+            5.0,
+            90.0,
+        ).await?;
 
         std::fs::copy(&temp_path, &ytdlp_path)
-            .map_err(|e| format!("Failed to install yt-dlp: {}", e))?;
+            .map_err(|e| format!("Failed to install: {}", e))?;
 
         #[cfg(unix)]
         {
@@ -156,12 +194,12 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
             "yt-dlp",
             100.0,
             "complete",
-            Some("yt-dlp installed successfully"),
+            Some("Success"),
         );
         return Ok(());
     }
 
-    emit_progress(app, "yt-dlp", 10.0, "updating", Some("Updating yt-dlp..."));
+    emit_progress(app, "yt-dlp", 10.0, "updating", Some("Updating..."));
 
     let mut cmd = create_command(ytdlp_path.clone());
     cmd.arg("-U")
@@ -174,36 +212,26 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
             "yt-dlp",
             100.0,
             "error",
-            Some("Failed to start yt-dlp update"),
+            Some("Failed to start update"),
         );
-        format!("Failed to start yt-dlp update: {}", e)
+        format!("Failed to start update: {}", e)
     })?;
 
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or("Failed to capture yt-dlp stdout")?;
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let reader = std::io::BufReader::new(stdout);
 
     for line in reader.lines() {
         let line = line.unwrap_or_default();
-        match line.as_str() {
-            l if l.starts_with("Current version:") => {
-                emit_progress(app, "yt-dlp", 20.0, "updating", Some(&line));
-            }
-            l if l.starts_with("Latest version:") => {
-                emit_progress(app, "yt-dlp", 40.0, "updating", Some(&line));
-            }
-            l if l.starts_with("Current Build Hash:") => {
-                emit_progress(app, "yt-dlp", 60.0, "updating", Some(&line));
-            }
-            l if l.starts_with("Updating to") => {
-                emit_progress(app, "yt-dlp", 80.0, "updating", Some(&line));
-            }
-            l if l.starts_with("Updated yt-dlp to") => {
-                emit_progress(app, "yt-dlp", 100.0, "complete", Some(&line));
-            }
-            _ => {}
+        if line.contains("Current version:") {
+            emit_progress(app, "yt-dlp", 20.0, "updating", Some(&line));
+        } else if line.contains("Latest version:") {
+            emit_progress(app, "yt-dlp", 40.0, "updating", Some(&line));
+        } else if line.contains("Current Build Hash:") {
+            emit_progress(app, "yt-dlp", 60.0, "updating", Some(&line));
+        } else if line.contains("Updating to") {
+            emit_progress(app, "yt-dlp", 80.0, "updating", Some(&line));
+        } else if line.contains("Updated yt-dlp to") {
+            emit_progress(app, "yt-dlp", 100.0, "complete", Some(&line));
         }
     }
 
@@ -213,9 +241,9 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
             "yt-dlp",
             100.0,
             "error",
-            Some("yt-dlp update process failed"),
+            Some("Update process failed"),
         );
-        format!("Failed to wait for yt-dlp update: {}", e)
+        format!("Failed to wait for update: {}", e)
     })?;
 
     if !status.success() {
@@ -224,9 +252,9 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
             "yt-dlp",
             100.0,
             "error",
-            Some("yt-dlp update failed"),
+            Some("Update failed"),
         );
-        return Err("yt-dlp update failed".to_string());
+        return Err("Update failed".to_string());
     }
 
     Ok(())
@@ -280,11 +308,11 @@ fn compute_sha256(path: &Path) -> Result<String, String> {
 async fn fetch_yt_dlp_hashes() -> Result<std::collections::HashMap<String, String>, String> {
     let response = reqwest::get(YTDLP_HASH_URL)
         .await
-        .map_err(|e| format!("Failed to fetch yt-dlp hashes: {}", e))?;
+        .map_err(|e| format!("Failed to fetch hashes: {}", e))?;
     let text = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read yt-dlp hash file: {}", e))?;
+        .map_err(|e| format!("Failed to read hash file: {}", e))?;
 
     let mut map = std::collections::HashMap::new();
     for line in text.lines() {
@@ -306,7 +334,7 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<(), String> {
         "ffmpeg",
         0.0,
         "downloading",
-        Some("Starting FFmpeg download..."),
+        Some("Downloading..."),
     );
 
     match download_ffmpeg(app).await {
@@ -316,7 +344,7 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<(), String> {
                 "ffmpeg",
                 100.0,
                 "complete",
-                Some("FFmpeg updated successfully"),
+                Some("Success"),
             );
             Ok(())
         }
@@ -326,24 +354,55 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<(), String> {
                 "ffmpeg",
                 100.0,
                 "error",
-                Some(&format!("FFmpeg update failed: {}", e)),
+                Some(&format!("Update failed: {}", e)),
             );
-            Err(format!("FFmpeg update failed: {}", e))
+            Err(format!("Update failed: {}", e))
         }
     }
 }
 
-async fn download_file<F>(url: &str, path: &Path, mut progress_callback: F) -> Result<(), String>
-where
-    F: FnMut(f64) + Send,
-{
+fn get_ytdlp_download_url() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        Ok(YTDLP_WINDOWS_BINARY_URL.to_string())
+    }
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        Ok(YTDLP_LINUX_X86_BINARY_URL.to_string())
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        Ok(YTDLP_LINUX_ARCH_BINARY_URL.to_string())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Ok(YTDLP_MACOS_BINARY_URL.to_string())
+    }
+    #[cfg(not(any(
+        target_os = "windows",
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+        target_os = "macos"
+    )))]
+    {
+        Err("Unsupported platform".to_string())
+    }
+}
+
+async fn download_file_with_progress(
+    url: &str,
+    path: &Path,
+    app: &AppHandle,
+    binary_name: &str,
+    start_progress: f64,
+    end_progress: f64,
+) -> Result<(), String> {
     let response = reqwest::get(url)
         .await
         .map_err(|e| format!("Download failed: {}", e))?;
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded = 0u64;
-
     let mut file = fs::File::create(path)
         .map_err(|e| format!("Failed to create file: {}", e))?;
 
@@ -358,45 +417,21 @@ where
 
         downloaded += chunk.len() as u64;
         if total_size > 0 {
-            progress_callback(downloaded as f64 / total_size as f64);
+            let progress = start_progress + (downloaded as f64 / total_size as f64) * (end_progress - start_progress);
+            emit_progress(
+                app,
+                binary_name,
+                progress,
+                "downloading",
+                Some(&format!("Downloading: {:.1}%", progress)),
+            );
         }
     }
 
     Ok(())
 }
 
-fn get_ytdlp_download_url() -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    {
-        Ok("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe".to_string())
-    }
-    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    {
-        Ok("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux".to_string())
-    }
-    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-    {
-        Ok("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64".to_string())
-    }
-    #[cfg(target_os = "macos")]
-    {
-        Ok("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos".to_string())
-    }
-    #[cfg(not(any(
-        target_os = "windows",
-        all(target_os = "linux", target_arch = "x86_64"),
-        all(target_os = "linux", target_arch = "aarch64"),
-        target_os = "macos"
-    )))]
-    {
-        Err("Unsupported platform".to_string())
-    }
-}
-
 pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
-    use std::fs;
-    use std::path::Path;
-
     let temp_dir = crate::temp::ensure_temp_dir()?;
     let bin_dir = app
         .path()
@@ -408,69 +443,93 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        let url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+        let url = FFMPEG_WINDOWS_BINARY_URL;
         let archive_path = temp_dir.join("ffmpeg-release-essentials.zip");
 
-        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading FFmpeg..."));
-        download_file(url, &archive_path, |p| {
-            emit_progress(app, "ffmpeg", 5.0 + p * 70.0, "downloading", None);
-        })
-        .await?;
+        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
+        
+        
+        download_file_with_progress(
+            url,
+            &archive_path,
+            app,
+            "ffmpeg",
+            5.0,
+            70.0,
+        ).await?;
 
-        emit_progress(app, "ffmpeg", 80.0, "extracting", Some("Extracting FFmpeg..."));
+        emit_progress(app, "ffmpeg", 75.0, "extracting", Some("Extracting..."));
         extract_ffmpeg_windows(&archive_path, &bin_dir)?;
 
-        emit_progress(app, "ffmpeg", 90.0, "testing", Some("Testing FFmpeg..."));
+        emit_progress(app, "ffmpeg", 90.0, "testing", Some("Testing..."));
         test_ffmpeg_binaries(&bin_dir)?;
 
-        emit_progress(app, "ffmpeg", 100.0, "complete", Some("FFmpeg updated successfully"));
+        emit_progress(app, "ffmpeg", 100.0, "complete", Some("Success"));
     }
 
     #[cfg(target_os = "macos")]
     {
-        let ffmpeg_url = "https://evermeet.cx/ffmpeg/getrelease/ffmpeg";
-        let ffprobe_url = "https://evermeet.cx/ffmpeg/getrelease/ffprobe";
+        let ffmpeg_url = FFMPEG_MACOS_BINARY_URL;
+        let ffprobe_url = FFPROBE_MACOS_BINARY_URL;
         let ffmpeg_zip = temp_dir.join("ffmpeg-macos.zip");
         let ffprobe_zip = temp_dir.join("ffprobe-macos.zip");
 
-        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading FFmpeg..."));
-        download_file(ffmpeg_url, &ffmpeg_zip, |p| {
-            emit_progress(app, "ffmpeg", 5.0 + p * 35.0, "downloading", None);
-        })
-        .await?;
-        download_file(ffprobe_url, &ffprobe_zip, |p| {
-            emit_progress(app, "ffmpeg", 40.0 + p * 35.0, "downloading", None);
-        })
-        .await?;
+        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
+        
+        
+        download_file_with_progress(
+            ffmpeg_url,
+            &ffmpeg_zip,
+            app,
+            "ffmpeg",
+            5.0,
+            35.0,
+        ).await?;
 
-        emit_progress(app, "ffmpeg", 80.0, "extracting", Some("Extracting FFmpeg..."));
+        
+        download_file_with_progress(
+            ffprobe_url,
+            &ffprobe_zip,
+            app,
+            "ffmpeg",
+            40.0,
+            70.0,
+        ).await?;
+
+        emit_progress(app, "ffmpeg", 75.0, "extracting", Some("Extracting..."));
         extract_single_binary_zip(&ffmpeg_zip, &bin_dir, "ffmpeg")?;
         extract_single_binary_zip(&ffprobe_zip, &bin_dir, "ffprobe")?;
 
-        emit_progress(app, "ffmpeg", 90.0, "testing", Some("Testing FFmpeg..."));
+        emit_progress(app, "ffmpeg", 90.0, "testing", Some("Testing..."));
         test_ffmpeg_binaries(&bin_dir)?;
 
-        emit_progress(app, "ffmpeg", 100.0, "complete", Some("FFmpeg updated successfully"));
+        emit_progress(app, "ffmpeg", 100.0, "complete", Some("Success"));
     }
 
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
-        let url = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+        let url = FFMPEG_LINUX_BINARY_URL;
         let archive_path = temp_dir.join("ffmpeg-release-amd64-static.tar.xz");
 
-        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading FFmpeg..."));
-        download_file(url, &archive_path, |p| {
-            emit_progress(app, "ffmpeg", 5.0 + p * 75.0, "downloading", None);
-        })
-        .await?;
+        emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
+        
+        
+        download_file_with_progress(
+            url,
+            &archive_path,
+            app,
+            "ffmpeg",
+            5.0,
+            75.0,
+        ).await?;
 
-        emit_progress(app, "ffmpeg", 85.0, "extracting", Some("Extracting FFmpeg..."));
+        emit_progress(app, "ffmpeg", 80.0, "extracting", Some("Extracting..."));
         extract_ffmpeg_linux(&archive_path, &bin_dir)?;
 
-        emit_progress(app, "ffmpeg", 95.0, "testing", Some("Testing FFmpeg..."));
+        emit_progress(app, "ffmpeg", 95.0, "testing", Some("Testing..."));
         test_ffmpeg_binaries(&bin_dir)?;
 
-        emit_progress(app, "ffmpeg", 100.0, "complete", Some("FFmpeg updated successfully"));
+        emit_progress(app, "ffmpeg", 100.0, "complete", Some("Success"));
     }
 
     Ok(())

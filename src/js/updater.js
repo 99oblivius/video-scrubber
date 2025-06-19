@@ -1,5 +1,3 @@
-// js/updater.js
-
 const {
     updater,
     core: { invoke },
@@ -14,6 +12,7 @@ class UpdateManager {
         this.appUpdate = null;
         this.listeners = [];
         this.updateContainer = null;
+        this.binaryProgress = {};
     }
 
     async init() {
@@ -33,18 +32,26 @@ class UpdateManager {
     }
 
     _showAppUpdateUI() {
-        // This part for app updates can be styled and implemented as you see fit.
-        // For now, we focus on the binary updates on the splash screen.
+        
         console.log("App update available:", this.appUpdate);
     }
 
     _onBinaryProgress({ binary_name, progress, status, message }) {
+        
+        this.binaryProgress[binary_name] = {
+            progress,
+            status,
+            message,
+            timestamp: Date.now()
+        };
+
         const splashProgressContainer = document.getElementById("splash-progress");
         if (!splashProgressContainer) return;
 
         let item = splashProgressContainer.querySelector(
             `[data-binary="${binary_name}"]`
         );
+        
         if (!item) {
             item = document.createElement("div");
             item.className = "binary-progress-item";
@@ -52,26 +59,45 @@ class UpdateManager {
             item.innerHTML = `
                 <div class="binary-info">
                     <span class="binary-name">${binary_name}</span>
-                    <span class="binary-status"></span>
+                    <span class="binary-status">${message || status}</span>
                 </div>
                 <div class="binary-progress-bar">
-                    <div class="binary-progress-fill"></div>
+                    <div class="binary-progress-fill" style="width: ${progress}%"></div>
                 </div>
+                ${status === 'downloading' ? `
+                <div class="binary-download-speed"></div>
+                ` : ''}
             `;
             splashProgressContainer.appendChild(item);
         }
 
         const fill = item.querySelector(".binary-progress-fill");
         const statusEl = item.querySelector(".binary-status");
+        const speedEl = item.querySelector(".binary-download-speed");
 
         fill.style.width = `${progress}%`;
         statusEl.textContent = message || status;
 
-        item.classList.remove("complete", "error");
+        
+        if (speedEl && status === 'downloading') {
+            const prevProgress = this.binaryProgress[binary_name]?.progress || 0;
+            const prevTime = this.binaryProgress[binary_name]?.timestamp || Date.now();
+            const timeDiff = (Date.now() - prevTime) / 1000;
+            
+            if (timeDiff > 0.5 && progress > prevProgress) {
+                const progressDiff = progress - prevProgress;
+                const speed = progressDiff / timeDiff;
+                speedEl.textContent = `Speed: ${speed.toFixed(1)}%/s`;
+            }
+        }
+
+        item.classList.remove("complete", "error", "downloading");
         if (status === "complete") {
             item.classList.add("complete");
         } else if (status === "error") {
             item.classList.add("error");
+        } else if (status === "downloading") {
+            item.classList.add("downloading");
         }
     }
 
@@ -79,6 +105,7 @@ class UpdateManager {
         const splashProgressContainer = document.getElementById("splash-progress");
         if (splashProgressContainer) {
             splashProgressContainer.style.display = "flex";
+            splashProgressContainer.innerHTML = ''; 
         }
 
         let binaryInfos;
@@ -99,39 +126,31 @@ class UpdateManager {
             return true;
         }
 
-        // Immediately show UI for binaries that need updating
         toUpdate.forEach((b) => {
             this._onBinaryProgress({
                 binary_name: b.name,
                 progress: 0,
                 status: "pending",
-                message: b.is_installed ? "Outdated" : "Not found, installing...",
+                message: b.is_installed ? "Update available" : "Not installed",
             });
         });
-
-        const updatePromises = toUpdate.map((b) =>
-            invoke("update_binary", { binaryName: b.name }).catch((err) => {
-                console.error(`update_binary for ${b.name} failed`, err);
+        
+        for (const binary of toUpdate) {
+            try {
+                await invoke("update_binary", { binaryName: binary.name });
+            } catch (err) {
+                console.error(`update_binary for ${binary.name} failed`, err);
                 this._onBinaryProgress({
-                    binary_name: b.name,
+                    binary_name: binary.name,
                     progress: 100,
                     status: "error",
-                    message: `Update failed: ${err}`,
+                    message: `Update failed: ${err.message || err}`,
                 });
-                // Re-throw to make Promise.all fail
-                throw new Error(`Update failed for ${b.name}`);
-            })
-        );
-
-        try {
-            await Promise.all(updatePromises);
-            // All updates succeeded
-            return true;
-        } catch (e) {
-            // At least one update failed
-            console.error(e.message);
-            return false;
+                return false;
+            }
         }
+
+        return true;
     }
 
     destroy() {

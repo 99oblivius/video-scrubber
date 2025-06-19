@@ -169,6 +169,14 @@ const player = (() => {
 document.addEventListener('DOMContentLoaded', async () => {
     printWelcomeMessage();
 
+    function blockRefresh(e) {
+        if (e.key === 'F5' || (e.key === 'r' && (e.ctrlKey || e.metaKey))) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+    window.addEventListener('keydown', blockRefresh, true);
+
     const updater = setupUpdater();
     const splash = document.getElementById('splash');
     const splashProgress = document.createElement('div');
@@ -193,12 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     player.init();
 
-    setTimeout(async () => {
-        await invoke('show_app_window');
-    }, 50);
-
-    setTimeout(() => {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 350);
-    }, 400);
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 350);
+    window.removeEventListener('keydown', blockRefresh, true);
 });

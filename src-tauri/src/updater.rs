@@ -184,9 +184,9 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(&ytdlp_path)?.permissions();
+            let mut perms = std::fs::metadata(&ytdlp_path).expect("File permissions not found").permissions();
             perms.set_mode(0o755);
-            std::fs::set_permissions(&ytdlp_path, perms)?;
+            std::fs::set_permissions(&ytdlp_path, perms).expect("File permissions could not be set");
         }
 
         emit_progress(
@@ -634,9 +634,9 @@ fn extract_ffmpeg_linux(archive_path: &Path, bin_dir: &Path) -> Result<(), Strin
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                let mut perms = fs::metadata(&dest)?.permissions();
+                let mut perms = fs::metadata(&dest).expect("File permissions not found").permissions();
                 perms.set_mode(0o755);
-                fs::set_permissions(&dest, perms)?;
+                fs::set_permissions(&dest, perms).expect("File permissions could not be set");
             }
         }
     }

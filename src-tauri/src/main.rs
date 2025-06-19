@@ -6,6 +6,7 @@ mod models;
 mod process;
 mod temp;
 mod utils;
+mod updater;
 mod ytdlp;
 
 use process::terminate_all_processes;
@@ -37,6 +38,8 @@ fn main() {
             commands::get_queue_state,
             commands::search_youtube,
             commands::update_window_title,
+            commands::check_all_binaries,
+            commands::update_binary,
         ])
         .setup(|_app| {
             let _ = ensure_temp_dir();

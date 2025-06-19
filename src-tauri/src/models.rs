@@ -160,3 +160,20 @@ pub struct YtSearchResult {
     pub view_count: Option<u64>,
     pub id: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BinaryInfo {
+    pub name: String,
+    pub current_version: Option<String>,
+    pub latest_version: Option<String>,
+    pub needs_update: bool,
+    pub is_installed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BinaryUpdateProgress {
+    pub binary_name: String,
+    pub progress: f64,
+    pub status: String,
+    pub message: Option<String>,
+}

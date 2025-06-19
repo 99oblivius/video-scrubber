@@ -1,10 +1,12 @@
 use crate::ffmpeg::{build_ffmpeg_command, monitor_ffmpeg_progress};
+use futures::future::join_all;
 use crate::models::*;
 use crate::process::PROCESSES;
 use crate::process::{
     register_process, terminate_process_tree, unregister_process, wait_for_process,
 };
 use crate::temp::{cleanup_temp_files, ensure_temp_dir};
+use crate::updater::{check_binary_status, update_ffmpeg, update_ytdlp};
 use crate::utils::{
     create_command, get_binary_path, parse_video_dimensions,
 };
@@ -516,4 +518,27 @@ pub fn update_window_title(app: AppHandle, title: String) -> Result<(), String> 
         .ok_or("Main window not found")?;
     window.set_title(&title).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn check_all_binaries(app: AppHandle) -> Result<Vec<BinaryInfo>, String> {
+    let binaries = vec!["yt-dlp", "ffmpeg"];
+    
+    let checks = binaries.into_iter().map(|binary| {
+        let app_clone = app.clone();
+        async move {
+            check_binary_status(&app_clone, binary).await
+        }
+    });
+    let results: Vec<Result<BinaryInfo, String>> = join_all(checks).await;
+    results.into_iter().collect()
+}
+
+#[tauri::command]
+pub async fn update_binary(app: AppHandle, binary_name: String) -> Result<(), String> {
+    match binary_name.as_str() {
+        "yt-dlp" => update_ytdlp(&app).await,
+        "ffmpeg" | "ffprobe" => update_ffmpeg(&app).await,
+        _ => Err(format!("Unknown binary: {}", binary_name)),
+    }
 }

@@ -10,6 +10,7 @@ import { setupProgressBar } from './progress.js';
 import { setupSave } from './save.js';
 import { setupSettings } from './settings.js';
 import { setupTrim } from './trim.js';
+import { setupUpdater } from './updater.js';
 import { setupUrlLoader } from './url-loader.js';
 
 const makeSafeFileName = (title, maxLen = 100) => title
@@ -165,15 +166,39 @@ const player = (() => {
     return { init };
 })();
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     printWelcomeMessage();
+
+    const updater = setupUpdater();
+    const splash = document.getElementById('splash');
+    const splashProgress = document.createElement('div');
+    splashProgress.id = 'splash-progress';
+    splashProgress.className = 'splash-progress';
+    splash.querySelector('img').insertAdjacentElement('afterend', splashProgress);
+
+    const [_, binariesOk] = await Promise.all([
+        updater.init(),
+        updater.checkAndUpdateBinaries()
+    ]);
+
+    if (!binariesOk) {
+        const err = document.createElement('div');
+        err.className = 'splash-error';
+        err.textContent =
+            'Failed to initialize required components. Please restart the app.';
+        splash.appendChild(err);
+        splash.querySelector('.logo-container').style.animation = 'none';
+        return;
+    }
+
     player.init();
-    setTimeout(async () => { await invoke('show_app_window'); }, 50);
-    
+
+    setTimeout(async () => {
+        await invoke('show_app_window');
+    }, 50);
+
     setTimeout(() => {
-        const splash = document.getElementById('splash');
         splash.style.opacity = '0';
-        
-        setTimeout(() => { splash.remove(); }, 350);
+        setTimeout(() => splash.remove(), 350);
     }, 400);
 });

@@ -1,4 +1,5 @@
-const { invoke } = window.__TAURI__.core;
+const { invokem } = window.__TAURI__.core;
+const { getVersion } = window.__TAURI__.app;
 
 import { setupCompress } from './compress.js';
 import { setupControls } from './controls.js';
@@ -42,14 +43,22 @@ const showNotification = (message, type = "info", duration = 3000) => {
     }, duration);
 };
 
-const printWelcomeMessage = () => {
+const printWelcomeMessage = async () => {
     const styles = {
-        title: 'font-family: monospace; font-size: 12px; font-weight: bold; color: #3B82F6;',
-        subtitle: 'color: #888; font-style: italic;',
-        info: 'color: #666;'
+        title: "font-family: monospace; font-size: 12px; font-weight: bold; color: #3B82F6;",
+        subtitle: "color: #888; font-style: italic;",
+        info: "color: #666;",
+        version: "color: #888; font-size: 10px;"
     };
+    const version = await getVersion();
+    
+    const versionText = `v${version}`;
+    const lineWidth = 54;
+    const padding = lineWidth - versionText.length - 1;
+    const paddedVersion = " ".repeat(padding) + versionText + " ";
 
-    console.info(`%c
+    console.info(
+        `%c
     ╔══════════════════════════════════════════════════════╗
     ║                                                      ║
     ║   ██╗     ██╗██╗   ██╗██╗██████╗ ███████╗ ██████╗    ║
@@ -58,11 +67,16 @@ const printWelcomeMessage = () => {
     ║   ██║     ██║╚██╗ ██╔╝██║██║  ██║██╔══╝  ██║   ██║   ║
     ║   ███████╗██║ ╚████╔╝ ██║██████╔╝███████╗╚██████╔╝   ║
     ║   ╚══════╝╚═╝  ╚═══╝  ╚═╝╚═════╝ ╚══════╝ ╚═════╝    ║
-    ║                                                      ║
-    ╚══════════════════════════════════════════════════════╝`, styles.title);
+    ║${paddedVersion}║
+    ╚══════════════════════════════════════════════════════╝`,
+        styles.title
+    );
 
-    console.info('%cWhen you open a video file, detailed metadata will appear here.', styles.info);
-    console.info('%c\nHappy editing! 🎥✨\n', styles.subtitle);
+    console.info(
+        "%cWhen you open a video file, detailed metadata will appear here.",
+        styles.info
+    );
+    console.info("%c\nHappy editing! 🎥✨\n", styles.subtitle);
 };
 
 const setupFocusTrap = () => {
@@ -167,6 +181,8 @@ const player = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const version = await getVersion();
+    const versionElement = document.getElementById('app-version').textContent = `v${version}`;
     printWelcomeMessage();
 
     function blockRefresh(e) {

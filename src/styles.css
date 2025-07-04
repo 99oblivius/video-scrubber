@@ -176,6 +176,20 @@ body {
     transform: scale(1.2);
   }
 }
+#splash .version-tag {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85em;
+  font-family: monospace;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  animation: fadeIn 1s forwards;
+  animation-delay: 0.75s;
+  opacity: 0;
+}
 #splash .logo-container {
   display: flex;
   justify-content: center;

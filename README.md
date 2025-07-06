@@ -1,7 +1,19 @@
-# Tauri + Vanilla
+# Livideo
 
-This is a port of the [main-web](https://github.com/99oblivius/video-scrubber/tree/main-web) branch of this project into a portable web app with the intention to expand the accessibility to client hardware for video handling.
+A simplistic video **viewer**, **editor**, and **downloader**.  
+View basic Metadata or additional stream information in the DevTools' (F12) Console. 
 
-# Example
+## Current Features:
+- Trimming
+- Cropping
+- Compressing
 
-![video-editor](src/assets/examples/video-editor.png)
+## TO-DO:
+- HLS (video streams)
+- Audio extraction
+- FFmpeg Hardware acceleration
+
+## UI Examples:
+Window | Tool Tips (H)
+:-----------------------:|:-----------------------:
+![](src/assets/examples/example-main.png) | ![](src/assets/examples/example-tips.png)

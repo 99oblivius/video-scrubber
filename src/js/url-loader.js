@@ -303,11 +303,16 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
         
         urlInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+                const value = e.target.value.trim();
                 if (searchDebounceTimer) {
                     clearTimeout(searchDebounceTimer);
-                    hideSearchSpinner();
                 }
-                loadUrlButton.click();
+                if (value.startsWith('http')) {
+                    hideSearchSpinner();
+                    loadUrlButton.click();
+                } else {
+                    performSearch(value);
+                }
             }
         });
     };

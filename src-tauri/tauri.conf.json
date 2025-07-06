@@ -34,7 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "deb"],
     "category": "GraphicsAndDesign",
     "shortDescription": "Livideo",
     "createUpdaterArtifacts": true,

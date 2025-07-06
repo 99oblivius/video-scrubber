@@ -573,7 +573,7 @@ fn extract_ffmpeg_linux(archive_path: &Path, bin_dir: &Path) -> Result<(), Strin
         return Err("Failed to extract ffmpeg tar.xz".to_string());
     }
     for entry in WalkDir::new(&temp_extract) {
-        let entry = entry?.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
         let name = entry.file_name().to_string_lossy().to_lowercase();
         if name == "ffmpeg" || name == "ffprobe" {
             let dest = bin_dir.join(&name);

@@ -34,8 +34,8 @@ pub fn get_binary_path(app: &AppHandle, binary: &str) -> Result<PathBuf, std::io
 
     let path = app
         .path()
-        .resource_dir()
-        .expect("Failed to get resource dir")
+        .app_local_data_dir()
+        .expect("Local AppData dir missing")
         .join("resources")
         .join("bin");
 

@@ -12,14 +12,16 @@
     "core:app:default",
     "core:resources:default",
     "core:menu:default",
-    "core:tray:default",
     "core:window:allow-set-fullscreen",
     "dialog:default",
     "dialog:allow-save",
     "dialog:allow-message",
     "dialog:allow-open",
+    "fs:read-dirs",
+    "fs:write-files",
+    "fs:scope-resource",
     "fs:allow-read-file",
-    "fs:allow-stat",
+    "fs:allow-mkdir",
     {
       "identifier": "fs:scope",
       "allow": [

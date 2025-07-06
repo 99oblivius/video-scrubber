@@ -18,8 +18,9 @@ class UpdateManager {
     async init() {
         try {
             this.appUpdate = await updater.check();
-            if (this.appUpdate?.shouldUpdate) {
-                this._showAppUpdateUI();
+            
+            if (this.appUpdate?.available) {
+                return await this._handleAppUpdate();
             }
         } catch (e) {
             console.error("App update check failed", e);
@@ -29,15 +30,87 @@ class UpdateManager {
             this._onBinaryProgress(e.payload)
         );
         this.listeners.push(unlisten);
+        
+        return false;
     }
 
-    _showAppUpdateUI() {
-        
+    async _handleAppUpdate() {
         console.log("App update available:", this.appUpdate);
+        
+        const splashProgressContainer = document.getElementById("splash-progress");
+        if (splashProgressContainer) {
+            const updateItem = document.createElement("div");
+            updateItem.className = "binary-progress-item downloading";
+            updateItem.innerHTML = `
+                <div class="binary-info">
+                    <span class="binary-name">App Update</span>
+                    <span class="binary-status">v${this.appUpdate.version} available</span>
+                </div>
+                <div class="binary-progress-bar">
+                    <div class="binary-progress-fill"></div>
+                </div>
+                <div class="binary-download-speed"></div>
+            `;
+            splashProgressContainer.appendChild(updateItem);
+            
+            try {
+                let downloaded = 0;
+                let contentLength = 0;
+                const progressFill = updateItem.querySelector(".binary-progress-fill");
+                const statusEl = updateItem.querySelector(".binary-status");
+                const speedEl = updateItem.querySelector(".binary-download-speed");
+                
+                await new Promise(r => setTimeout(r, 3500));
+                await this.appUpdate.downloadAndInstall((event) => {
+                    switch (event.event) {
+                        case 'Started':
+                            contentLength = event.data.contentLength;
+                            statusEl.textContent = `Downloading update...`;
+                            console.log(`Started downloading ${contentLength} bytes`);
+                            break;
+                        case 'Progress':
+                            downloaded += event.data.chunkLength;
+                            const progress = Math.round((downloaded / contentLength) * 100);
+                            progressFill.style.width = `${progress}%`;
+                            statusEl.textContent = `Downloading: ${progress}%`;
+                            
+                            const speed = event.data.chunkLength / (event.data.elapsed || 0.1);
+                            speedEl.textContent = `Speed: ${(speed / 1024).toFixed(1)} KB/s`;
+                            break;
+                        case 'Finished':
+                            progressFill.style.width = "100%";
+                            statusEl.textContent = "Update complete, restarting...";
+                            updateItem.classList.remove("downloading");
+                            updateItem.classList.add("complete");
+                            console.log('Download finished');
+                            break;
+                    }
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await relaunch();
+                
+            } catch (e) {
+                console.error("Update failed:", e);
+                updateItem.classList.remove("downloading");
+                updateItem.classList.add("error");
+                const statusEl = updateItem.querySelector(".binary-status");
+                statusEl.textContent = `Update failed: ${e.message || e}`;
+            }
+        } else {
+            try {
+                await this.appUpdate.downloadAndInstall();
+                await relaunch();
+                return true;
+            } catch (e) {
+                console.error("Update failed:", e);
+            }
+        }
+        
+        return false;
     }
 
     _onBinaryProgress({ binary_name, progress, status, message }) {
-        
         this.binaryProgress[binary_name] = {
             progress,
             status,
@@ -51,7 +124,7 @@ class UpdateManager {
         let item = splashProgressContainer.querySelector(
             `[data-binary="${binary_name}"]`
         );
-        
+
         if (!item) {
             item = document.createElement("div");
             item.className = "binary-progress-item";
@@ -62,7 +135,7 @@ class UpdateManager {
                     <span class="binary-status">${message || status}</span>
                 </div>
                 <div class="binary-progress-bar">
-                    <div class="binary-progress-fill" style="width: ${progress}%"></div>
+                    <div class="binary-progress-fill"></div>
                 </div>
                 ${status === 'downloading' ? `
                 <div class="binary-download-speed"></div>
@@ -75,20 +148,16 @@ class UpdateManager {
         const statusEl = item.querySelector(".binary-status");
         const speedEl = item.querySelector(".binary-download-speed");
 
-        fill.style.width = `${progress}%`;
-        statusEl.textContent = message || status;
+        if (fill) {
+            fill.style.setProperty('--progress', `${progress}%`);
+        }
+        if (statusEl) {
+            statusEl.textContent = message || status;
+        }
 
-        
         if (speedEl && status === 'downloading') {
-            const prevProgress = this.binaryProgress[binary_name]?.progress || 0;
-            const prevTime = this.binaryProgress[binary_name]?.timestamp || Date.now();
-            const timeDiff = (Date.now() - prevTime) / 1000;
-            
-            if (timeDiff > 0.5 && progress > prevProgress) {
-                const progressDiff = progress - prevProgress;
-                const speed = progressDiff / timeDiff;
-                speedEl.textContent = `Speed: ${speed.toFixed(1)}%/s`;
-            }
+            const prev = this.binaryProgress[binary_name];
+            speedEl.textContent = "";
         }
 
         item.classList.remove("complete", "error", "downloading");
@@ -159,5 +228,10 @@ class UpdateManager {
 }
 
 export function setupUpdater() {
+    const init = async () => {
+        await listen('updater-log', (event) => {
+            console.warn(event.payload);
+        });
+    };
     return new UpdateManager();
 }

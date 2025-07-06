@@ -1,9 +1,15 @@
 use crate::models::{BinaryInfo, BinaryUpdateProgress};
 use crate::utils::{create_command, get_binary_path};
 use regex::Regex;
-use std::{fs, io::{BufRead, Read}, path::Path};
-use tauri::{AppHandle, Emitter, Manager};
 use sha2::{Digest, Sha256};
+use std::{
+    fs,
+    io::{BufRead, Read},
+    path::Path,
+};
+use tauri::{AppHandle, Emitter, Manager};
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+use walkdir::WalkDir;
 
 const YTDLP_HASH_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
@@ -21,28 +27,20 @@ const YTDLP_LINUX_ARCH_BINARY_URL: &str =
 const YTDLP_MACOS_BINARY_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos";
 
-const FFMPEG_VERSION_URL: &str =
-    "https://www.gyan.dev/ffmpeg/builds/release-version";
+const FFMPEG_VERSION_URL: &str = "https://www.gyan.dev/ffmpeg/builds/release-version";
 
 #[cfg(target_os = "windows")]
 const FFMPEG_WINDOWS_BINARY_URL: &str =
     "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 #[cfg(target_os = "macos")]
-const FFMPEG_MACOS_BINARY_URL: &str =
-    "https://evermeet.cx/ffmpeg/getrelease/ffmpeg";
+const FFMPEG_MACOS_BINARY_URL: &str = "https://evermeet.cx/ffmpeg/getrelease/ffmpeg";
 #[cfg(target_os = "macos")]
-const FFPROBE_MACOS_BINARY_URL: &str =
-    "https://evermeet.cx/ffmpeg/getrelease/ffprobe";
+const FFPROBE_MACOS_BINARY_URL: &str = "https://evermeet.cx/ffmpeg/getrelease/ffprobe";
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const FFMPEG_LINUX_BINARY_URL: &str =
     "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
 
-
-
-pub async fn check_binary_status(
-    app: &AppHandle,
-    binary_name: &str,
-) -> Result<BinaryInfo, String> {
+pub async fn check_binary_status(app: &AppHandle, binary_name: &str) -> Result<BinaryInfo, String> {
     let binary_path = get_binary_path(app, binary_name)
         .map_err(|e| format!("Failed to get binary path: {}", e))?;
 
@@ -137,8 +135,8 @@ async fn get_latest_version(binary_name: &str) -> Result<Option<String>, String>
     match binary_name {
         "ffmpeg" | "ffprobe" => {
             let response = reqwest::get(FFMPEG_VERSION_URL)
-            .await
-            .map_err(|e| format!("Failed to fetch latest version: {}", e))?;
+                .await
+                .map_err(|e| format!("Failed to fetch latest version: {}", e))?;
 
             let version = response
                 .text()
@@ -157,45 +155,34 @@ fn versions_match(current: &str, latest: &str) -> bool {
 }
 
 pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
-    let ytdlp_path = get_binary_path(app, "yt-dlp")
-        .map_err(|e| format!("Failed to get path: {}", e))?;
+    let ytdlp_path =
+        get_binary_path(app, "yt-dlp").map_err(|e| format!("Failed to get path: {}", e))?;
     let platform_filename = get_ytdlp_filename();
     let download_url = get_ytdlp_download_url()?;
 
     if !ytdlp_path.exists() {
         emit_progress(app, "yt-dlp", 5.0, "downloading", Some("Downloading..."));
-        
+
         let temp_dir = crate::temp::ensure_temp_dir()?;
         let temp_path = temp_dir.join(platform_filename);
 
         // Download with progress tracking
-        download_file_with_progress(
-            &download_url,
-            &temp_path,
-            app,
-            "yt-dlp",
-            5.0,
-            90.0,
-        ).await?;
+        download_file_with_progress(&download_url, &temp_path, app, "yt-dlp", 5.0, 90.0).await?;
 
-        std::fs::copy(&temp_path, &ytdlp_path)
-            .map_err(|e| format!("Failed to install: {}", e))?;
+        std::fs::copy(&temp_path, &ytdlp_path).map_err(|e| format!("Failed to install: {}", e))?;
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(&ytdlp_path).expect("File permissions not found").permissions();
+            let mut perms = std::fs::metadata(&ytdlp_path)
+                .expect("File permissions not found")
+                .permissions();
             perms.set_mode(0o755);
-            std::fs::set_permissions(&ytdlp_path, perms).expect("File permissions could not be set");
+            std::fs::set_permissions(&ytdlp_path, perms)
+                .expect("File permissions could not be set");
         }
 
-        emit_progress(
-            app,
-            "yt-dlp",
-            100.0,
-            "complete",
-            Some("Success"),
-        );
+        emit_progress(app, "yt-dlp", 100.0, "complete", Some("Success"));
         return Ok(());
     }
 
@@ -236,24 +223,12 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
     }
 
     let status = child.wait().map_err(|e| {
-        emit_progress(
-            app,
-            "yt-dlp",
-            100.0,
-            "error",
-            Some("Update process failed"),
-        );
+        emit_progress(app, "yt-dlp", 100.0, "error", Some("Update process failed"));
         format!("Failed to wait for update: {}", e)
     })?;
 
     if !status.success() {
-        emit_progress(
-            app,
-            "yt-dlp",
-            100.0,
-            "error",
-            Some("Update failed"),
-        );
+        emit_progress(app, "yt-dlp", 100.0, "error", Some("Update failed"));
         return Err("Update failed".to_string());
     }
 
@@ -289,8 +264,8 @@ fn get_ytdlp_filename() -> &'static str {
 }
 
 fn compute_sha256(path: &Path) -> Result<String, String> {
-    let mut file = fs::File::open(path)
-        .map_err(|e| format!("Failed to open file for hashing: {}", e))?;
+    let mut file =
+        fs::File::open(path).map_err(|e| format!("Failed to open file for hashing: {}", e))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {
@@ -329,23 +304,11 @@ async fn fetch_yt_dlp_hashes() -> Result<std::collections::HashMap<String, Strin
 }
 
 pub async fn update_ffmpeg(app: &AppHandle) -> Result<(), String> {
-    emit_progress(
-        app,
-        "ffmpeg",
-        0.0,
-        "downloading",
-        Some("Downloading..."),
-    );
+    emit_progress(app, "ffmpeg", 0.0, "downloading", Some("Downloading..."));
 
     match download_ffmpeg(app).await {
         Ok(()) => {
-            emit_progress(
-                app,
-                "ffmpeg",
-                100.0,
-                "complete",
-                Some("Success"),
-            );
+            emit_progress(app, "ffmpeg", 100.0, "complete", Some("Success"));
             Ok(())
         }
         Err(e) => {
@@ -403,8 +366,7 @@ async fn download_file_with_progress(
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded = 0u64;
-    let mut file = fs::File::create(path)
-        .map_err(|e| format!("Failed to create file: {}", e))?;
+    let mut file = fs::File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
 
     let mut stream = response.bytes_stream();
     use futures::StreamExt;
@@ -417,7 +379,8 @@ async fn download_file_with_progress(
 
         downloaded += chunk.len() as u64;
         if total_size > 0 {
-            let progress = start_progress + (downloaded as f64 / total_size as f64) * (end_progress - start_progress);
+            let progress = start_progress
+                + (downloaded as f64 / total_size as f64) * (end_progress - start_progress);
             emit_progress(
                 app,
                 binary_name,
@@ -435,8 +398,8 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
     let temp_dir = crate::temp::ensure_temp_dir()?;
     let bin_dir = app
         .path()
-        .resource_dir()
-        .expect("Resource dir missing")
+        .app_local_data_dir()
+        .expect("Local AppData dir missing")
         .join("resources")
         .join("bin");
     fs::create_dir_all(&bin_dir).map_err(|e| format!("Failed to create bin dir: {}", e))?;
@@ -447,16 +410,8 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
         let archive_path = temp_dir.join("ffmpeg-release-essentials.zip");
 
         emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
-        
-        
-        download_file_with_progress(
-            url,
-            &archive_path,
-            app,
-            "ffmpeg",
-            5.0,
-            70.0,
-        ).await?;
+
+        download_file_with_progress(url, &archive_path, app, "ffmpeg", 5.0, 70.0).await?;
 
         emit_progress(app, "ffmpeg", 75.0, "extracting", Some("Extracting..."));
         extract_ffmpeg_windows(&archive_path, &bin_dir)?;
@@ -475,26 +430,10 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
         let ffprobe_zip = temp_dir.join("ffprobe-macos.zip");
 
         emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
-        
-        
-        download_file_with_progress(
-            ffmpeg_url,
-            &ffmpeg_zip,
-            app,
-            "ffmpeg",
-            5.0,
-            35.0,
-        ).await?;
 
-        
-        download_file_with_progress(
-            ffprobe_url,
-            &ffprobe_zip,
-            app,
-            "ffmpeg",
-            40.0,
-            70.0,
-        ).await?;
+        download_file_with_progress(ffmpeg_url, &ffmpeg_zip, app, "ffmpeg", 5.0, 35.0).await?;
+
+        download_file_with_progress(ffprobe_url, &ffprobe_zip, app, "ffmpeg", 40.0, 70.0).await?;
 
         emit_progress(app, "ffmpeg", 75.0, "extracting", Some("Extracting..."));
         extract_single_binary_zip(&ffmpeg_zip, &bin_dir, "ffmpeg")?;
@@ -512,16 +451,8 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
         let archive_path = temp_dir.join("ffmpeg-release-amd64-static.tar.xz");
 
         emit_progress(app, "ffmpeg", 5.0, "downloading", Some("Downloading..."));
-        
-        
-        download_file_with_progress(
-            url,
-            &archive_path,
-            app,
-            "ffmpeg",
-            5.0,
-            75.0,
-        ).await?;
+
+        download_file_with_progress(url, &archive_path, app, "ffmpeg", 5.0, 75.0).await?;
 
         emit_progress(app, "ffmpeg", 80.0, "extracting", Some("Extracting..."));
         extract_ffmpeg_linux(&archive_path, &bin_dir)?;
@@ -536,8 +467,16 @@ pub async fn download_ffmpeg(app: &AppHandle) -> Result<(), String> {
 }
 
 fn test_ffmpeg_binaries(bin_dir: &Path) -> Result<(), String> {
-    let ffmpeg = bin_dir.join(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" });
-    let ffprobe = bin_dir.join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" });
+    let ffmpeg = bin_dir.join(if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    });
+    let ffprobe = bin_dir.join(if cfg!(windows) {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    });
 
     let ffmpeg_ok = std::process::Command::new(&ffmpeg)
         .arg("-version")
@@ -564,10 +503,14 @@ fn test_ffmpeg_binaries(bin_dir: &Path) -> Result<(), String> {
 #[cfg(target_os = "windows")]
 fn extract_ffmpeg_windows(archive_path: &Path, bin_dir: &Path) -> Result<(), String> {
     use zip::ZipArchive;
-    let file = fs::File::open(archive_path).map_err(|e| format!("Failed to open archive: {}", e))?;
-    let mut archive = ZipArchive::new(file).map_err(|e| format!("Failed to read archive: {}", e))?;
+    let file =
+        fs::File::open(archive_path).map_err(|e| format!("Failed to open archive: {}", e))?;
+    let mut archive =
+        ZipArchive::new(file).map_err(|e| format!("Failed to read archive: {}", e))?;
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| format!("Failed to read entry: {}", e))?;
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| format!("Failed to read entry: {}", e))?;
         let name = file.name().to_lowercase();
         if name.ends_with("ffmpeg.exe") || name.ends_with("ffprobe.exe") {
             let out_path = bin_dir.join(Path::new(file.name()).file_name().unwrap());
@@ -592,16 +535,20 @@ fn extract_single_binary_zip(
     if archive.len() != 1 {
         return Err("Expected zip to contain exactly one file".to_string());
     }
-    let mut file = archive.by_index(0).map_err(|e| format!("Failed to read entry: {}", e))?;
+    let mut file = archive
+        .by_index(0)
+        .map_err(|e| format!("Failed to read entry: {}", e))?;
     let out_path = bin_dir.join(target_name);
-    let mut out_file = fs::File::create(&out_path)
-        .map_err(|e| format!("Failed to create output file: {}", e))?;
+    let mut out_file =
+        fs::File::create(&out_path).map_err(|e| format!("Failed to create output file: {}", e))?;
     std::io::copy(&mut file, &mut out_file)
         .map_err(|e| format!("Failed to extract file: {}", e))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&out_path).expect("File permissions not found").permissions();
+        let mut perms = fs::metadata(&out_path)
+            .expect("File permissions not found")
+            .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&out_path, perms).expect("File persmissions could not be set");
     }
@@ -625,8 +572,8 @@ fn extract_ffmpeg_linux(archive_path: &Path, bin_dir: &Path) -> Result<(), Strin
     if !output.status.success() {
         return Err("Failed to extract ffmpeg tar.xz".to_string());
     }
-    for entry in fs::read_dir(&temp_extract).map_err(|e| format!("Failed to read temp dir: {}", e))? {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+    for entry in WalkDir::new(&temp_extract) {
+        let entry = entry?.map_err(|e| format!("Failed to read entry: {}", e))?;
         let name = entry.file_name().to_string_lossy().to_lowercase();
         if name == "ffmpeg" || name == "ffprobe" {
             let dest = bin_dir.join(&name);
@@ -634,7 +581,9 @@ fn extract_ffmpeg_linux(archive_path: &Path, bin_dir: &Path) -> Result<(), Strin
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                let mut perms = fs::metadata(&dest).expect("File permissions not found").permissions();
+                let mut perms = fs::metadata(&dest)
+                    .expect("File permissions not found")
+                    .permissions();
                 perms.set_mode(0o755);
                 fs::set_permissions(&dest, perms).expect("File permissions could not be set");
             }

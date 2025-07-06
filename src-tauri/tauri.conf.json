@@ -34,7 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "category": "GraphicsAndDesign",
     "shortDescription": "Livideo",
     "createUpdaterArtifacts": true,
@@ -50,7 +50,8 @@
       "certificateThumbprint": null,
       "digestAlgorithm": null,
       "nsis": {
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "installMode": "both"
       },
       "signCommand": null,
       "timestampUrl": null,

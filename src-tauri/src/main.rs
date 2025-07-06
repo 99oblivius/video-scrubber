@@ -15,7 +15,6 @@ use temp::ensure_temp_dir;
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(|_window, event| {
             if let WindowEvent::Resized(_) | WindowEvent::Moved(_) = event {
                 std::thread::sleep(std::time::Duration::from_millis(2));
@@ -41,8 +40,10 @@ fn main() {
             commands::check_all_binaries,
             commands::update_binary,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             let _ = ensure_temp_dir();
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_updater::Builder::new().build());
             Ok(())
         })
         .on_window_event(|window, event| {

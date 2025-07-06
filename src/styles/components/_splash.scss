@@ -89,7 +89,6 @@
                 .binary-name {
                     font-weight: 600;
                     color: white;
-                    text-transform: uppercase;
                     font-size: 0.9em;
                 }
 
@@ -107,6 +106,7 @@
                 overflow: hidden;
 
                 .binary-progress-fill {
+                    width: var(--progress, 0%);
                     height: 100%;
                     background: var(--accent);
                     transition: width 0.3s ease;

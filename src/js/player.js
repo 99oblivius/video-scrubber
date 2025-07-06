@@ -1,4 +1,3 @@
-const { invokem } = window.__TAURI__.core;
 const { getVersion } = window.__TAURI__.app;
 
 import { setupCompress } from './compress.js';
@@ -200,10 +199,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     splashProgress.className = 'splash-progress';
     splash.querySelector('img').insertAdjacentElement('afterend', splashProgress);
 
-    const [_, binariesOk] = await Promise.all([
-        updater.init(),
-        updater.checkAndUpdateBinaries()
-    ]);
+    const appUpdated = await updater.init();
+    const binariesOk = await updater.checkAndUpdateBinaries();
 
     if (!binariesOk) {
         const err = document.createElement('div');

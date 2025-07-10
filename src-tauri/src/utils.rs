@@ -25,6 +25,19 @@ pub fn create_command(binary_path: PathBuf) -> Command {
     cmd
 }
 
+pub fn move_file(src: &str, dst: &str) -> Result<(), String> {
+    match std::fs::rename(src, dst) {
+        Ok(()) => Ok(()),
+        Err(_) => {
+            std::fs::copy(src, dst)
+                .map_err(|e| format!("Failed to copy file to destination: {}", e))?;
+            std::fs::remove_file(src)
+                .map_err(|e| format!("Failed to remove temporary file: {}", e))?;
+            Ok(())
+        }
+    }
+}
+
 pub fn get_binary_path(app: &AppHandle, binary: &str) -> Result<PathBuf, std::io::Error> {
     let bin_name = if cfg!(windows) {
         format!("{}.exe", binary)

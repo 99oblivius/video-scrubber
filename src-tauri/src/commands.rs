@@ -8,7 +8,7 @@ use crate::process::{
 use crate::temp::{cleanup_temp_files, ensure_temp_dir};
 use crate::updater::{check_binary_status, update_ffmpeg, update_ytdlp};
 use crate::utils::{
-    create_command, get_binary_path, parse_video_dimensions,
+    create_command, get_binary_path, parse_video_dimensions, move_file
 };
 use crate::ytdlp::{build_ytdlp_command, monitor_ytdlp_progress};
 use regex::Regex;
@@ -115,8 +115,7 @@ pub async fn save_video(
         return Err("FFmpeg processing failed".to_string());
     }
 
-    std::fs::rename(&temp_path, &operation.output.path)
-        .map_err(|e| format!("Failed to move file to final destination: {}", e))?;
+    move_file(&temp_path, &operation.output.path)?;
 
     Ok(())
 }
@@ -140,7 +139,6 @@ pub async fn process_remote_video(
     let temp_file = temp_dir.join(format!("{}.{}", queue_id, output_ext));
     let temp_path = temp_file.to_string_lossy().to_string();
 
-    // Download with yt-dlp
     let mut ytdlp_cmd = build_ytdlp_command(&app, &operation.source.path, &temp_path, output_ext);
 
     let mut child = ytdlp_cmd
@@ -178,10 +176,8 @@ pub async fn process_remote_video(
         return Err(error_message);
     }
 
-    // Get actual video dimensions
     let dimensions = get_video_dimensions(&app, &temp_path)?;
 
-    // Adjust crop settings if needed
     let mut adjusted_changes = operation.changes.clone();
     if let Some(ref mut crop) = adjusted_changes.crop {
         adjust_crop_settings(
@@ -193,10 +189,8 @@ pub async fn process_remote_video(
         );
     }
 
-    // If no post-processing needed, just move the file
     if adjusted_changes.crop.is_none() && adjusted_changes.compression.is_none() {
-        std::fs::rename(&temp_path, &operation.output.path)
-            .map_err(|e| format!("Failed to save file: {}", e))?;
+        move_file(&temp_path, &operation.output.path)?;
         return Ok(());
     }
 

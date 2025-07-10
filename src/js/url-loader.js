@@ -116,7 +116,6 @@ export const setupUrlLoader = (video, dropContainer, metadata, dropzone) => {
                 abr: videoInfo.abr
             };
             
-            console.info(virtualFile);
             video.innerHTML = '';
             
             streamingUrls.forEach(function (stream) {

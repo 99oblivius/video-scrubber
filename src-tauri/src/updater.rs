@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
 const YTDLP_HASH_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
+    "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/SHA2-256SUMS";
 #[cfg(target_os = "windows")]
 
 const YTDLP_WINDOWS_BINARY_URL: &str =
@@ -189,7 +189,7 @@ pub async fn update_ytdlp(app: &AppHandle) -> Result<(), String> {
     emit_progress(app, "yt-dlp", 10.0, "updating", Some("Updating..."));
 
     let mut cmd = create_command(ytdlp_path.clone());
-    cmd.arg("-U")
+    cmd.args(["--update-to", "nightly"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 

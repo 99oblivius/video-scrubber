@@ -26,8 +26,8 @@ export const setupHelpTip = (settings) => {
         audio: {
             title: 'Audio',
             shortcuts: [
-                { keys: ['↑', '↓'], description: 'Vol ±5%' },
-                { keys: ['Whl'], description: 'Vol ±5%' },
+                { keys: ['↑', '↓'], description: 'Vol ±5(⇧1)%' },
+                { keys: ['Whl'], description: 'Vol ±5(⇧1)%' },
                 { keys: ['M'], description: 'Mute' },
             ]
         },

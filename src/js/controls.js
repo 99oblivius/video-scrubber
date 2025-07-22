@@ -148,8 +148,8 @@ export const setupControls = (video, metadata, settings, dropzone) => {
             switch(e.code) {
                 case 'ArrowLeft': jumpBackward(); break;
                 case 'ArrowRight': jumpForward(); break;
-                case 'ArrowUp': changeVolume(0.05); break;
-                case 'ArrowDown': changeVolume(-0.05); break;
+                case 'ArrowUp': changeVolume(e.shiftKey ? 0.01 : 0.05); break;
+                case 'ArrowDown': changeVolume(e.shiftKey ? -0.01 : -0.05); break;
                 case 'Comma': stepBackward(); break;
                 case 'Period': stepForward(); break;
                 default: break;
@@ -204,10 +204,12 @@ export const setupControls = (video, metadata, settings, dropzone) => {
         themeBtn.addEventListener('click', toggleTheme);
         document.addEventListener('contextmenu', event => event.preventDefault());
         window.addEventListener('wheel', (e) => {
+            let incr = 0.05;
             if (e.ctrlKey) return;
+            if (e.shiftKey) incr = 0.01;
             if (e.target.closest('.time-display')) return;
             e.preventDefault();
-            changeVolume(e.deltaY > 0 ? -0.05 : 0.05);
+            changeVolume(e.deltaY > 0 ? -incr : incr);
         }, { passive: false });
         
         bindButtons();

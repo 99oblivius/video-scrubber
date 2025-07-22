@@ -23,7 +23,7 @@ export const setupProgressBar = (video, metadata) => {
             const frameNumber = Math.round(video.currentTime / frameTime);
             const frameAlignedTime = frameNumber * frameTime;
             
-            timeDisplay.textContent = frameAlignedTime.toFixed(3) + 's';
+            timeDisplay.textContent = metadata.formatTime(frameAlignedTime);
             frameDisplay.textContent = frameNumber;
         }
         updateProgress();
@@ -86,7 +86,7 @@ export const setupProgressBar = (video, metadata) => {
             progressHover.appendChild(timeTextElement);
         }
 
-        timeTextElement.textContent = `${time.toFixed(3)}s (Frame ${frame})`;
+        timeTextElement.textContent = `${metadata.formatTime(time)} (Frame ${frame})`;
         progressHover.style.opacity = '1';
 
         const tooltipWidth = progressHover.offsetWidth;

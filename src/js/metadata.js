@@ -20,17 +20,20 @@ export const setupMetadata = (video) => {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
-    
-    const formatDuration = (seconds) => {
+
+    const formatTime = (seconds) => {
+        if (typeof seconds !== 'number' || !isFinite(seconds)) return '0:00.000';
+
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = Math.floor(seconds % 60);
         const ms = Math.floor((seconds % 1) * 1000);
-        
-        if (h > 0) {
-            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-        return `${m}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+
+        const timePart = `${m.toString().padStart(2, '0')}:${s
+            .toString()
+            .padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+
+        return h > 0 ? `${h}:${timePart}` : timePart;
     };
 
     const getVideoStream = () => {
@@ -68,7 +71,7 @@ export const setupMetadata = (video) => {
         console.log(`%cCodec: %c${formatValue(file.vcodec)}`, styles.label, styles.value);
         console.log(`%cResolution: %c${file.width && file.height ? `${file.width}×${file.height}` : 'N/A'}`, styles.label, styles.value);
         console.log(`%cFPS: %c${formatValue(file.fps)}`, styles.label, styles.value);
-        console.log(`%cDuration: %c${file.duration ? formatDuration(file.duration) : 'N/A'}`, styles.label, styles.value);
+        console.log(`%cDuration: %c${file.duration ? formatTime(file.duration) : 'N/A'}`, styles.label, styles.value);
         console.groupEnd();
 
         console.group('%cBitrate', styles.label);
@@ -217,7 +220,7 @@ export const setupMetadata = (video) => {
                 <div class="metadata-group">
                     <div class="metadata-item">
                         <span class="metadata-label">⏱</span>
-                        <span id="durationDisplay">${duration ? formatDuration(duration) : 'N/A'}</span>
+                        <span id="durationDisplay">${duration ? formatTime(duration) : 'N/A'}</span>
                     </div>
                     <div class="metadata-item">
                         <span class="metadata-label">📐</span>
@@ -259,7 +262,7 @@ export const setupMetadata = (video) => {
                     if (!duration && video.duration) {
                         const durDisplay = $('#durationDisplay');
                         if (durDisplay) {
-                            durDisplay.textContent = formatDuration(video.duration);
+                            durDisplay.textContent = formatTime(video.duration);
                         }
                     }
                 }, { once: true });
@@ -353,6 +356,7 @@ export const setupMetadata = (video) => {
         getFPS,
         detectFrameRate,
         updateMetadataDisplay,
+        formatTime
     };
 };
 

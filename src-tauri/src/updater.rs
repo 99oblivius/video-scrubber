@@ -16,7 +16,7 @@ const YTDLP_HASH_URL: &str =
 #[cfg(target_os = "windows")]
 
 const YTDLP_WINDOWS_BINARY_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+    "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe";
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const YTDLP_LINUX_X86_BINARY_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";

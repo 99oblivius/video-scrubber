@@ -38,9 +38,11 @@ pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Comma
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .args([
+            "-y",
+            "-loglevel",
+            "error",
             "-progress",
             "pipe:1",
-            "-nostats",
             "-i",
             &operation.source.path,
         ]);

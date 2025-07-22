@@ -1,5 +1,4 @@
 use crate::ffmpeg::{build_ffmpeg_command, monitor_ffmpeg_progress};
-use futures::future::join_all;
 use crate::models::*;
 use crate::process::PROCESSES;
 use crate::process::{
@@ -7,10 +6,9 @@ use crate::process::{
 };
 use crate::temp::{cleanup_temp_files, ensure_temp_dir};
 use crate::updater::{check_binary_status, update_ffmpeg, update_ytdlp};
-use crate::utils::{
-    create_command, get_binary_path, parse_video_dimensions, move_file
-};
+use crate::utils::{create_command, get_binary_path, move_file, parse_video_dimensions};
 use crate::ytdlp::{build_ytdlp_command, monitor_ytdlp_progress};
+use futures::future::join_all;
 use regex::Regex;
 use std::{
     io::{BufReader, Read, Write},
@@ -87,7 +85,10 @@ pub async fn save_video(
     };
 
     let mut cmd = build_ffmpeg_command(&app, &temp_operation);
-    let mut child = cmd.spawn().map_err(|e| format!("FFmpeg error: {}", e))?;
+    let mut child = cmd
+        .current_dir(temp_dir)
+        .spawn()
+        .map_err(|e| format!("FFmpeg error: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stderr")?;
 
     let output_filename = Path::new(&operation.output.path)
@@ -141,7 +142,29 @@ pub async fn process_remote_video(
 
     let mut ytdlp_cmd = build_ytdlp_command(&app, &operation.source.path, &temp_path, output_ext);
 
+    let (first_pass_args, second_pass_trim) = if let Some(ref trim) = operation.changes.trim {
+        let buffer = 10.0;
+        let first_ss = (trim.start_time - buffer).max(0.0);
+
+        let args = format!(
+            "ffmpeg:-y -ss {:.3} -t {:.3} -loglevel error -progress pipe:1",
+            first_ss, trim.end_time
+        );
+
+        let second_trim = TrimSettings {
+            start_time: buffer.min(trim.start_time),
+            end_time: trim.end_time - trim.start_time,
+        };
+
+        ytdlp_cmd.args(["--downloader", "ffmpeg", "--downloader-args", &args]);
+
+        (Some(args), Some(second_trim))
+    } else {
+        (None, None)
+    };
+
     let mut child = ytdlp_cmd
+        .current_dir(temp_dir)
         .spawn()
         .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
@@ -156,7 +179,24 @@ pub async fn process_remote_video(
     let child_arc = register_process(queue_id.clone(), child, false, output_filename);
 
     let reader = BufReader::new(stdout);
-    monitor_ytdlp_progress(reader, queue_id.clone(), app.clone());
+
+    if first_pass_args.is_some() {
+        let _ = operation
+            .changes
+            .trim
+            .as_ref()
+            .map(|t| t.end_time - t.start_time)
+            .unwrap_or(0.0);
+        monitor_ffmpeg_progress(
+            reader,
+            queue_id.clone(),
+            app.clone(),
+            operation.source.duration,
+            operation.changes.trim.clone(),
+        );
+    } else {
+        monitor_ytdlp_progress(reader, queue_id.clone(), app.clone());
+    }
 
     let download_exit_status = wait_for_process(child_arc).await?;
     unregister_process(&queue_id);
@@ -176,9 +216,22 @@ pub async fn process_remote_video(
         return Err(error_message);
     }
 
+    if operation.changes.trim.is_none()
+        && operation.changes.crop.is_none()
+        && operation.changes.compression.is_none()
+    {
+        move_file(&temp_path, &operation.output.path)?;
+        return Ok(());
+    }
+
     let dimensions = get_video_dimensions(&app, &temp_path)?;
 
     let mut adjusted_changes = operation.changes.clone();
+
+    if let Some(ref second_trim) = second_pass_trim {
+        adjusted_changes.trim = Some(second_trim.clone());
+    }
+
     if let Some(ref mut crop) = adjusted_changes.crop {
         adjust_crop_settings(
             crop,
@@ -189,10 +242,10 @@ pub async fn process_remote_video(
         );
     }
 
-    if adjusted_changes.crop.is_none() && adjusted_changes.compression.is_none() {
-        move_file(&temp_path, &operation.output.path)?;
-        return Ok(());
-    }
+    let new_duration = second_pass_trim
+        .as_ref()
+        .map(|t| t.end_time)
+        .unwrap_or(operation.source.duration);
 
     let postprocess_operation = SaveOperation {
         source: SourceInfo {
@@ -200,7 +253,7 @@ pub async fn process_remote_video(
             name: operation.source.name.clone(),
             size: 0,
             container: output_ext.to_string(),
-            duration: operation.source.duration,
+            duration: new_duration,
             width: dimensions.0,
             height: dimensions.1,
         },
@@ -216,9 +269,11 @@ async fn process_with_ffmpeg(
     operation: SaveOperation,
     queue_id: String,
 ) -> Result<(), String> {
+    let temp_dir = ensure_temp_dir()?;
+
     let total_duration = operation.source.duration;
 
-    let output_filename = Path::new(&operation.output.path)
+    let output_filename: String = Path::new(&operation.output.path)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
@@ -226,6 +281,7 @@ async fn process_with_ffmpeg(
 
     let mut cmd = build_ffmpeg_command(&app, &operation);
     let mut child = cmd
+        .current_dir(temp_dir)
         .spawn()
         .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
@@ -343,15 +399,15 @@ pub async fn get_streaming_url(
     let ytdlp_path = get_binary_path(&app, "yt-dlp").expect("Failed to get yt-dlp path");
     let mut cmd = create_command(ytdlp_path);
     cmd.args([
-            "-j",
-            "--no-playlist",
-            "-f",
-            &format_preference,
-            "--get-url",
-            "--hls-prefer-native",
-            "--no-check-certificate",
-            &url,
-        ]);
+        "-j",
+        "--no-playlist",
+        "-f",
+        &format_preference,
+        "--get-url",
+        "--hls-prefer-native",
+        "--no-check-certificate",
+        &url,
+    ]);
     let output = cmd
         .output()
         .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
@@ -378,22 +434,22 @@ pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearc
 
     let mut cmd = create_command(ytdlp_path);
     cmd.args([
-            "--print",
-            format_string,
-            "--no-simulate",
-            "--skip-download",
-            "--flat-playlist",
-            "--ignore-errors",
-            "--quiet",
-            "--no-warnings",
-            "--encoding",
-            "utf-8",
-            "--default-search",
-            "ytsearch",
-            &format!("ytsearch10:{}", query),
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+        "--print",
+        format_string,
+        "--no-simulate",
+        "--skip-download",
+        "--flat-playlist",
+        "--ignore-errors",
+        "--quiet",
+        "--no-warnings",
+        "--encoding",
+        "utf-8",
+        "--default-search",
+        "ytsearch",
+        &format!("ytsearch10:{}", query),
+    ])
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null());
 
     cmd.env("PYTHONIOENCODING", "utf-8")
         .env("LANG", "en_US.UTF-8")
@@ -517,12 +573,10 @@ pub fn update_window_title(app: AppHandle, title: String) -> Result<(), String> 
 #[tauri::command]
 pub async fn check_all_binaries(app: AppHandle) -> Result<Vec<BinaryInfo>, String> {
     let binaries = vec!["yt-dlp", "ffmpeg"];
-    
+
     let checks = binaries.into_iter().map(|binary| {
         let app_clone = app.clone();
-        async move {
-            check_binary_status(&app_clone, binary).await
-        }
+        async move { check_binary_status(&app_clone, binary).await }
     });
     let results: Vec<Result<BinaryInfo, String>> = join_all(checks).await;
     results.into_iter().collect()

@@ -59,6 +59,10 @@ pub fn build_ytdlp_command(app: &AppHandle, url: &str, output_path: &str, ext: &
             "--no-playlist",
             "--progress",
             "--newline",
+            "--downloader",
+            "aria2c",
+            "--downloader-args",
+            "aria2c:-c=false -x 16 -s 16 -j 2 -k 1M",
         ]);
 
     cmd.arg(url);

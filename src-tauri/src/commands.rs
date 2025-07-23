@@ -142,26 +142,7 @@ pub async fn process_remote_video(
 
     let mut ytdlp_cmd = build_ytdlp_command(&app, &operation.source.path, &temp_path, output_ext);
 
-    let (first_pass_args, second_pass_trim) = if let Some(ref trim) = operation.changes.trim {
-        let buffer = 10.0;
-        let first_ss = (trim.start_time - buffer).max(0.0);
-
-        let args = format!(
-            "ffmpeg:-y -ss {:.3} -t {:.3} -loglevel error -progress pipe:1",
-            first_ss, trim.end_time
-        );
-
-        let second_trim = TrimSettings {
-            start_time: buffer.min(trim.start_time),
-            end_time: trim.end_time - trim.start_time,
-        };
-
-        ytdlp_cmd.args(["--downloader", "ffmpeg", "--downloader-args", &args]);
-
-        (Some(args), Some(second_trim))
-    } else {
-        (None, None)
-    };
+    eprintln!("{:?}", ytdlp_cmd);
 
     let mut child = ytdlp_cmd
         .current_dir(temp_dir)
@@ -179,24 +160,8 @@ pub async fn process_remote_video(
     let child_arc = register_process(queue_id.clone(), child, false, output_filename);
 
     let reader = BufReader::new(stdout);
-
-    if first_pass_args.is_some() {
-        let _ = operation
-            .changes
-            .trim
-            .as_ref()
-            .map(|t| t.end_time - t.start_time)
-            .unwrap_or(0.0);
-        monitor_ffmpeg_progress(
-            reader,
-            queue_id.clone(),
-            app.clone(),
-            operation.source.duration,
-            operation.changes.trim.clone(),
-        );
-    } else {
-        monitor_ytdlp_progress(reader, queue_id.clone(), app.clone());
-    }
+    
+    monitor_ytdlp_progress(reader, queue_id.clone(), app.clone());
 
     let download_exit_status = wait_for_process(child_arc).await?;
     unregister_process(&queue_id);
@@ -227,11 +192,6 @@ pub async fn process_remote_video(
     let dimensions = get_video_dimensions(&app, &temp_path)?;
 
     let mut adjusted_changes = operation.changes.clone();
-
-    if let Some(ref second_trim) = second_pass_trim {
-        adjusted_changes.trim = Some(second_trim.clone());
-    }
-
     if let Some(ref mut crop) = adjusted_changes.crop {
         adjust_crop_settings(
             crop,
@@ -242,18 +202,13 @@ pub async fn process_remote_video(
         );
     }
 
-    let new_duration = second_pass_trim
-        .as_ref()
-        .map(|t| t.end_time)
-        .unwrap_or(operation.source.duration);
-
     let postprocess_operation = SaveOperation {
         source: SourceInfo {
             path: temp_path.clone(),
             name: operation.source.name.clone(),
             size: 0,
             container: output_ext.to_string(),
-            duration: new_duration,
+            duration: operation.source.duration,
             width: dimensions.0,
             height: dimensions.1,
         },

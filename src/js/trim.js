@@ -88,7 +88,7 @@ export const setupTrim = (video, metadata) => {
                 
                 const timeSpan = document.createElement('span');
                 timeSpan.id = 'progressHoverTime';
-                timeSpan.textContent = `${snappedTime.toFixed(3)}s (Frame ${frameNumber})`;
+                timeSpan.textContent = `${metadata.formatTime(snappedTime)} (Frame ${frameNumber})`;
                 progressHover.appendChild(timeSpan);
                 
                 previewVideo.currentTime = snappedTime;

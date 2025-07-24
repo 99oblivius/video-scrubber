@@ -3,8 +3,8 @@ use crate::utils::{create_command, get_binary_path};
 use std::{
     io::{BufRead, BufReader},
     process::{Command, Stdio},
-    time::Instant,
     thread,
+    time::Instant,
 };
 use tauri::{AppHandle, Emitter};
 
@@ -63,6 +63,8 @@ pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Comma
             "-crf",
             &compression.quality.to_string(),
         ]);
+    } else {
+        cmd.args(["-c", "copy"]);
     }
 
     if let Some(crop) = &operation.changes.crop {

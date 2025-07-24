@@ -142,8 +142,6 @@ pub async fn process_remote_video(
 
     let mut ytdlp_cmd = build_ytdlp_command(&app, &operation.source.path, &temp_path, output_ext);
 
-    eprintln!("{:?}", ytdlp_cmd);
-
     let mut child = ytdlp_cmd
         .current_dir(temp_dir)
         .spawn()
@@ -419,7 +417,6 @@ pub async fn search_youtube(app: AppHandle, query: String) -> Result<Vec<YtSearc
     }
 
     let output_str = String::from_utf8(output.stdout).unwrap_or_else(|e| {
-        eprintln!("UTF-8 parsing failed: {}", e);
         String::from_utf8_lossy(&e.into_bytes()).into_owned()
     });
 

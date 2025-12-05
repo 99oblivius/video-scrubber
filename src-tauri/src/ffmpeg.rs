@@ -63,6 +63,15 @@ pub fn build_ffmpeg_command(app: &AppHandle, operation: &SaveOperation) -> Comma
             "-crf",
             &compression.quality.to_string(),
         ]);
+    } else if operation.changes.crop.is_some() {
+        // Cropping requires re-encoding, use source codec or fallback to libx264
+        let video_codec = operation
+            .source
+            .video_codec
+            .as_ref()
+            .map(|c| get_video_codec_param(c))
+            .unwrap_or("libx264");
+        cmd.args(["-c:v", video_codec, "-crf", "18", "-c:a", "copy"]);
     } else {
         cmd.args(["-c", "copy"]);
     }

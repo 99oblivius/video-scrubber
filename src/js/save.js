@@ -2,7 +2,7 @@ const { message, save } = window.__TAURI__.dialog;
 const { invoke } = window.__TAURI__.core;
 import { setupQueue } from './queue.js';
 
-export const setupSave = (video) => {
+export const setupSave = (video, metadata) => {
     const $ = document.querySelector.bind(document);
     const saveBtn = $('#save-button');
     const compressBtn = $('#compress-button');
@@ -101,7 +101,10 @@ export const setupSave = (video) => {
 
     const getSourceInfo = () => {
         if (!currentFile) return null;
-        
+
+        const videoCodec = metadata.getVideoCodec();
+        const audioCodec = metadata.getAudioCodec();
+
         return {
             path: currentFile.path,
             name: currentFile.name,
@@ -109,7 +112,9 @@ export const setupSave = (video) => {
             container: currentFile.name.substring(currentFile.name.lastIndexOf('.') + 1).toLowerCase(),
             duration: video.duration,
             width: video.videoWidth,
-            height: video.videoHeight
+            height: video.videoHeight,
+            video_codec: videoCodec !== '?' ? videoCodec : null,
+            audio_codec: audioCodec
         };
     };
 

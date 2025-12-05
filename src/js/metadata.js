@@ -356,7 +356,9 @@ export const setupMetadata = (video) => {
         getFPS,
         detectFrameRate,
         updateMetadataDisplay,
-        formatTime
+        formatTime,
+        getVideoCodec,
+        getAudioCodec
     };
 };
 

@@ -9,6 +9,8 @@ pub struct SourceInfo {
     pub duration: f64,
     pub width: u32,
     pub height: u32,
+    pub video_codec: Option<String>,
+    pub audio_codec: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

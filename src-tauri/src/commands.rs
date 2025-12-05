@@ -89,7 +89,8 @@ pub async fn save_video(
         .current_dir(temp_dir)
         .spawn()
         .map_err(|e| format!("FFmpeg error: {}", e))?;
-    let stdout = child.stdout.take().ok_or("Failed to capture stderr")?;
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
 
     let output_filename = Path::new(&operation.output.path)
         .file_name()
@@ -113,7 +114,12 @@ pub async fn save_video(
     unregister_process(&queue_id);
 
     if !exit_status.success() {
-        return Err("FFmpeg processing failed".to_string());
+        let mut stderr_reader = BufReader::new(stderr);
+        let mut stderr_output = String::new();
+        stderr_reader
+            .read_to_string(&mut stderr_output)
+            .unwrap_or_default();
+        return Err(format!("FFmpeg processing failed: {}", stderr_output.trim()));
     }
 
     move_file(&temp_path, &operation.output.path)?;
@@ -209,6 +215,8 @@ pub async fn process_remote_video(
             duration: operation.source.duration,
             width: dimensions.0,
             height: dimensions.1,
+            video_codec: None,
+            audio_codec: None,
         },
         output: operation.output,
         changes: adjusted_changes,
@@ -238,6 +246,7 @@ async fn process_with_ffmpeg(
         .spawn()
         .map_err(|e| format!("Failed to execute FFmpeg: {}", e))?;
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
 
     let child_arc = register_process(queue_id.clone(), child, true, output_filename);
 
@@ -254,7 +263,12 @@ async fn process_with_ffmpeg(
     unregister_process(&queue_id);
 
     if !exit_status.success() {
-        return Err("FFmpeg processing failed".to_string());
+        let mut stderr_reader = BufReader::new(stderr);
+        let mut stderr_output = String::new();
+        stderr_reader
+            .read_to_string(&mut stderr_output)
+            .unwrap_or_default();
+        return Err(format!("FFmpeg processing failed: {}", stderr_output.trim()));
     }
 
     Ok(())

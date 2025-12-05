@@ -156,7 +156,7 @@ const player = (() => {
         const trim = setupTrim(v, metadata);
         const compress = setupCompress(v);
         const crop = setupCrop(v, settings);
-        const save = setupSave(v);
+        const save = setupSave(v, metadata);
 
         settings.init();
         settings.apply();
